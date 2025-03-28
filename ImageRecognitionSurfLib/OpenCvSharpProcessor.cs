@@ -49,8 +49,8 @@ public class OpenCvSharpProcessor : IImageRecognitionProcessor
             Cv2.Rectangle(screenshotOriginal, borderRect, Scalar.Fuchsia, 2);
 
             Point textLocation = new(rect.Location.X, rect.Location.Y - 10);
-            string text = template.ImageName.Take(16).ToString();
-            Cv2.PutText(screenshotOriginal, text, textLocation, HersheyFonts.HersheyPlain, 0.6, Scalar.CornflowerBlue);
+            string text = template.ImageName.FillOverflow();
+            Cv2.PutText(screenshotOriginal, text, textLocation, HersheyFonts.HersheyPlain, 1, Scalar.CornflowerBlue);
         }
     }
 
