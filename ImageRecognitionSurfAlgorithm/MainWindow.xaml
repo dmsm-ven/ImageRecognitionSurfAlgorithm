@@ -2,37 +2,57 @@
     x:Class="ImageRecognitionSurfAlgorithm.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:ImageRecognitionSurfAlgorithm.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
     xmlns:local="clr-namespace:ImageRecognitionSurfAlgorithm"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="clr-namespace:ImageRecognitionSurfAlgorithm.ViewModels"
-    xmlns:controls="clr-namespace:ImageRecognitionSurfAlgorithm.Controls"
-    d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel, IsDesignTimeCreatable=False}"
     Title="MainWindow"
     Width="800"
     Height="450"
-    d:Width="600"
+    d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel,
+                                     IsDesignTimeCreatable=False}"
     d:Height="200"
+    d:Width="600"
     mc:Ignorable="d">
+    <i:Interaction.Triggers>
+        <i:EventTrigger EventName="Loaded">
+            <i:InvokeCommandAction Command="{Binding LoadedCommand}" />
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Button Grid.Row="0" Grid.Column="0" Command="{Binding LoadSourceImageCommand}">
-            Загрузить изображение
-        </Button>
-        <Button Grid.Row="0" Grid.Column="1" Command="{Binding LoadSourceImageCommand}">
-            Обработать изображение
-        </Button>
-
-        <controls:ImageSourceControl Grid.Row="1" Grid.Column="0" ImagePath="{Binding SourceImagePath}" />
-        <controls:ImageSourceControl Grid.Row="1" Grid.Column="1" ImagePath="{Binding ResultImagePath}" />
+        <Button
+            Grid.Row="0"
+            Grid.Column="0"
+            Margin="2"
+            Command="{Binding LoadSourceImageCommand}"
+            Content="Загрузить изображение" />
+        <Button
+            Grid.Row="0"
+            Grid.Column="1"
+            Margin="2"
+            Command="{Binding ProcessImageCommand}"
+            Content="Обработать изображение" />
+        <controls:ImageSourceControl
+            Grid.Row="1"
+            Grid.Column="0"
+            Margin="2"
+            ImagePath="{Binding SourceImagePath, UpdateSourceTrigger=PropertyChanged}" />
+        <controls:ImageSourceControl
+            Grid.Row="1"
+            Grid.Column="1"
+            Margin="2"
+            ImagePath="{Binding ResultImagePath, UpdateSourceTrigger=PropertyChanged}" />
 
     </Grid>
 </Window>

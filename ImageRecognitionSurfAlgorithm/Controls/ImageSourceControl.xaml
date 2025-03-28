@@ -5,8 +5,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:ImageRecognitionSurfAlgorithm.Controls"
              mc:Ignorable="d" 
+             d:Background="White"
              d:DesignHeight="450" d:DesignWidth="800">
-    <Border>
+    <Border BorderBrush="Gray" BorderThickness="1" Padding="1">
         <Image Source="{Binding ImagePath}" />
     </Border>
 </UserControl>

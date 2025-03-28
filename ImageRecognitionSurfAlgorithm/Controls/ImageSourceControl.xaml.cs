@@ -17,7 +17,7 @@ namespace ImageRecognitionSurfAlgorithm.Controls
 
         // Using a DependencyProperty as the backing store for ImagePath.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty ImagePathProperty =
-            DependencyProperty.Register("ImagePath", typeof(string), typeof(ImageSourceControl), new PropertyMetadata(0));
+            DependencyProperty.Register("ImagePath", typeof(string), typeof(ImageSourceControl), new PropertyMetadata(string.Empty));
 
 
         public ImageSourceControl()
