@@ -2,6 +2,7 @@
 using ImageRecognitionSurfUI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.IO;
 using System.Windows;
 
 namespace ImageRecognitionSurfUI;
@@ -17,16 +18,54 @@ public partial class App : Application
         AppHost = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
-                services.AddSingleton<IImageRecognitionProcessor, OpenCvSharpProcessor>();
+                services.AddSingleton<OpenCvSharpProcessor>();
                 services.AddSingleton<MainWindowViewModel>();
             })
             .Build();
     }
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
+        await ClearCacheFolder();
+
         MainWindow = new MainWindow();
         MainWindow.DataContext = AppHost.Services.GetService<MainWindowViewModel>();
         MainWindow.Show();
+    }
+    protected override async void OnExit(ExitEventArgs e)
+    {
+        await ClearCacheFolder();
+    }
+
+
+    public static async Task ClearCacheFolder()
+    {
+        string cacheDir = Path.Combine(Directory.GetCurrentDirectory(), "cache");
+        if (!Directory.Exists(cacheDir))
+        {
+            Directory.CreateDirectory(cacheDir);
+        }
+
+        int retryCount = 0;
+        int retryMax = 5;
+        TimeSpan delay = TimeSpan.FromSeconds(1);
+
+        do
+        {
+            try
+            {
+                var cacheFiles = Directory.GetFiles(cacheDir).ToList();
+                if (cacheFiles.Any())
+                {
+                    cacheFiles.ForEach(File.Delete);
+                    return;
+                }
+            }
+            catch
+            {
+                retryCount++;
+            }
+            await Task.Delay(delay);
+        } while (retryCount <= retryMax);
     }
 }

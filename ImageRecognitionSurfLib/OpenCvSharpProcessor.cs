@@ -1,83 +1,118 @@
-﻿
-using OpenCvSharp;
+﻿using OpenCvSharp;
 
 namespace ImageRecognitionSurfLib;
-public class OpenCvSharpProcessor : IImageRecognitionProcessor
+public class OpenCvSharpProcessor
 {
-    public async Task<string> RecognizeDataToFile(string filePath)
-    {
-        string outputFile = Path.Combine(Path.GetDirectoryName(filePath), Path.GetFileNameWithoutExtension(filePath) + "_result" + Path.GetExtension(filePath));
+    public double Threshold { get; set; } = 0.8;
+    public double ThresholdMaxValue { get; set; } = 255;
+    public ThresholdTypes? ThresholdType { get; set; } = null;
+    public TemplateMatchModes? PREDEFINED_TemplateMatchMode { get; set; } = null;
+    public ImreadModes? PREDEFINED_ImreadMode { get; set; } = null;
+    public RetrievalModes? PREDEFINED_RetrievalMode { get; set; } = null;
+    public ContourApproximationModes? PREDEFINED_ContourApproximationMode { get; set; } = null;
+    public MatType PREDEFINED_MatType { get; set; } = MatType.CV_8U;
 
-        await Recognize(filePath, outputFile);
+    public async Task<string> RecognizeDataToFile(string filePath, IEnumerable<string> iconFiles)
+    {
+        string outputFile = Path.Combine(Directory.GetCurrentDirectory(), "cache",
+            Path.GetFileNameWithoutExtension(filePath) + "_result_" + DateTime.Now.Ticks + Path.GetExtension(filePath));
+
+        string dir = Path.GetDirectoryName(outputFile);
+        if (!Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        await Recognize(filePath, outputFile, iconFiles);
 
         return outputFile;
     }
 
-    private async Task Recognize(string filePath, string outputFilePath)
+    private async Task Recognize(string filePath, string outputFilePath, IEnumerable<string> iconFiles)
     {
-        var icons = await GetPredefinedItems();
-        var template = icons.First(); // alchemist_chemical_rage.png
-        var screenshotOriginal = Cv2.ImRead(filePath);
-        screenshotOriginal.ConvertTo(screenshotOriginal, MatType.CV_8UC1);
-        var screenshotGray = screenshotOriginal.CvtColor(ColorConversionCodes.BGR2GRAY);
-        var matchTemplate = screenshotGray.MatchTemplate(template.MatValue, TemplateMatchModes.CCoeffNormed);
-
-        Mat matchTemplateConverted = new();
-        if (matchTemplate.Type() != MatType.CV_8UC1)
+        try
         {
-            matchTemplate.ConvertTo(matchTemplateConverted, MatType.CV_8UC1);
+            var icons = await GetPredefinedItems(iconFiles);
+            var screenshotOriginal = Cv2.ImRead(filePath, PREDEFINED_ImreadMode.Value);
+            screenshotOriginal.ConvertTo(screenshotOriginal, PREDEFINED_MatType);
+
+            var bordersDic = ExtractAllPositions(icons, screenshotOriginal);
+
+            DrawSearchResultBorders(bordersDic, screenshotOriginal);
+
+            using var fs = File.Create(outputFilePath);
+            screenshotOriginal.WriteToStream(fs);
         }
-
-        var tresholdResults = matchTemplateConverted.Threshold(0.8, 256, ThresholdTypes.Otsu);
-
-        DrawSearchResultBorders(template, screenshotOriginal, tresholdResults);
-
-        using var fs = File.Create(outputFilePath);
-        screenshotOriginal.WriteToStream(fs);
+        catch
+        {
+            throw;
+        }
     }
 
-    private static void DrawSearchResultBorders(AbilityMatWrapper template, Mat screenshotOriginal, Mat tresholdResults)
+    private Dictionary<AbilityMatWrapper, Point> ExtractAllPositions(IEnumerable<AbilityMatWrapper> icons, Mat screenshotGray)
     {
-        var contours = tresholdResults.FindContoursAsArray(RetrievalModes.CComp, ContourApproximationModes.ApproxSimple);
+        Dictionary<AbilityMatWrapper, Point> bordersDic = new();
 
-        // Draw rectangles around detected areas
-        foreach (var contour in contours)
+        foreach (var template in icons)
         {
-            var rect = Cv2.BoundingRect(contour);
+            var matchTemplate = screenshotGray.MatchTemplate(template.MatValue, PREDEFINED_TemplateMatchMode.Value);
+            matchTemplate.MinMaxLoc(out double _, out _, out var minLoc, out var _);
 
-            Rect borderRect = new(rect.Location, new Size(60, 60));
+            bordersDic[template] = minLoc;
+        }
+
+        return bordersDic;
+    }
+
+    private static void DrawSearchResultBorders(Dictionary<AbilityMatWrapper, Point> bordersDic,
+        Mat screenshotOriginal,
+        bool drawTotal = true)
+    {
+        int titleOffset = -10;
+        int defaultIconSize = 60;
+
+        int totalPoints = 0;
+
+        foreach (var kvp in bordersDic)
+        {
+            string text = kvp.Key.ImageName.FillOverflow();
+            var point = kvp.Value;
+
+            Rect borderRect = new(point, new(defaultIconSize, defaultIconSize));
             Cv2.Rectangle(screenshotOriginal, borderRect, Scalar.Fuchsia, 2);
 
-            Point textLocation = new(rect.Location.X, rect.Location.Y - 10);
-            string text = template.ImageName.FillOverflow();
+            var textLocation = new Point(point.X, point.Y + titleOffset);
             Cv2.PutText(screenshotOriginal, text, textLocation, HersheyFonts.HersheyPlain, 1, Scalar.CornflowerBlue);
+
+            totalPoints++;
+
+
+            kvp.Key.MatValue?.Dispose();
+        }
+
+        if (drawTotal)
+        {
+            Cv2.PutText(screenshotOriginal, totalPoints.ToString(), new Point(150, 150), HersheyFonts.HersheyPlain, 5, Scalar.Red);
         }
     }
 
-    private async Task<AbilityMatWrapper[]> GetPredefinedItems()
+    private async Task<AbilityMatWrapper[]> GetPredefinedItems(IEnumerable<string> iconFiles)
     {
         var list = new List<AbilityMatWrapper>();
-        string[] testIcons = Directory.GetFiles(@"C:\Users\user\Desktop\AI RES\ADDA\icons", "*.*", SearchOption.TopDirectoryOnly);
 
-        foreach (var file in testIcons)
+        foreach (var file in iconFiles)
         {
-            var mat = Cv2.ImRead(file, ImreadModes.Grayscale);
-            Mat matConverted = new();
-            mat.ConvertTo(matConverted, MatType.CV_8UC1);
+            var mat = Cv2.ImRead(file, PREDEFINED_ImreadMode.Value);
+            mat.ConvertTo(mat, PREDEFINED_MatType);
 
             list.Add(new AbilityMatWrapper()
             {
                 ImageName = Path.GetFileNameWithoutExtension(file),
-                MatValue = matConverted
+                MatValue = mat
             });
         }
 
         return list.ToArray();
     }
 
-    private class AbilityMatWrapper
-    {
-        public Mat MatValue { get; set; }
-        public string ImageName { get; set; }
-    }
 }

@@ -8,12 +8,12 @@
     xmlns:local="clr-namespace:ImageRecognitionSurfUI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="clr-namespace:ImageRecognitionSurfUI.ViewModels"
-    Title="MainWindow"
+    Title="{Binding Title}"
     Width="800"
-    Height="450"
+    Height="285"
     d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel,
                                      IsDesignTimeCreatable=False}"
-    d:Height="200"
+    d:Height="400"
     d:Width="600"
     mc:Ignorable="d">
     <i:Interaction.Triggers>
@@ -38,19 +38,98 @@
             Margin="2"
             Command="{Binding LoadSourceImageCommand}"
             Content="Загрузить изображение" />
-        <Button
+        <Grid
             Grid.Row="0"
             Grid.Column="2"
-            Margin="2"
-            Command="{Binding ProcessImageCommand}"
-            Content="Обработать изображение" />
-        <controls:ImageSourceControl CurrentImagePath="{Binding SourceImagePath}" Grid.Row="1" Grid.Column="0" />
-        <GridSplitter 
-            ShowsPreview="False"
+            Margin="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Button
+                Grid.Row="0"
+                Command="{Binding ProcessImageCommand}"
+                Content="Обработать изображение" />
+            <Expander
+                Grid.Row="1"
+                DataContext="{Binding ProcessOptionsViewModel}"
+                Header="Опции"
+                IsExpanded="True">
+                <StackPanel Orientation="Vertical">
+                    <UniformGrid Columns="2">
+                        <TextBlock Margin="2" Text="Trashold" />
+                        <TextBox Margin="2" Text="{Binding Treshold, UpdateSourceTrigger=LostFocus}" />
+                    </UniformGrid>
+                    <UniformGrid Columns="2">
+                        <TextBlock Margin="2" Text="MaxValue" />
+                        <TextBox Margin="2" Text="{Binding TresholdMaxValue, UpdateSourceTrigger=LostFocus}" />
+                    </UniformGrid>
+                    <UniformGrid Columns="2">
+                        <TextBlock Margin="2" Text="ThresholdTypes" />
+                        <ComboBox
+                            Margin="2"
+                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableThresholdTypes}"
+                            SelectedValue="{Binding SelectedThresholdType, UpdateSourceTrigger=PropertyChanged}" />
+                    </UniformGrid>
+                    <UniformGrid Columns="2">
+                        <TextBlock Margin="2" Text="ContourApproximationModes" />
+                        <ComboBox
+                            Margin="2"
+                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableContourApproximationModes}"
+                            SelectedValue="{Binding SelectedContourApproximationMode, UpdateSourceTrigger=PropertyChanged}" />
+                    </UniformGrid>
+                    <UniformGrid Columns="2">
+                        <TextBlock Margin="2" Text="RetrievalMode" />
+                        <ComboBox
+                            Margin="2"
+                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableRetrievalModes}"
+                            SelectedValue="{Binding SelectedRetrievalMode, UpdateSourceTrigger=PropertyChanged}" />
+                    </UniformGrid>
+
+                    <UniformGrid Columns="2">
+                        <TextBlock Margin="2" Text="TemplateMatchMode" />
+                        <ComboBox
+                            Margin="2"
+                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableTemplateMatchModes}"
+                            SelectedValue="{Binding SelectedTemplateMatchMode, UpdateSourceTrigger=PropertyChanged}" />
+                    </UniformGrid>
+
+                    <UniformGrid Columns="2">
+                        <TextBlock Margin="2" Text="ImreadMode" />
+                        <ComboBox
+                            Margin="2"
+                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableImreadModes}"
+                            SelectedValue="{Binding SelectedImreadMode, UpdateSourceTrigger=PropertyChanged}" />
+                    </UniformGrid> 
+                    
+                    <UniformGrid Columns="2">
+                        <TextBlock Margin="2" Text="MatType" />
+                        <ComboBox
+                            Margin="2"
+                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableMatTypes}"
+                            SelectedValue="{Binding SelectedMatType, UpdateSourceTrigger=PropertyChanged}" />
+                    </UniformGrid>
+                </StackPanel>
+            </Expander>
+        </Grid>
+
+        <controls:ImageSourceControl
+            Grid.Row="1"
+            Grid.Column="0"
+            CurrentImagePath="{Binding SourceImagePath}" />
+        <GridSplitter
+            Grid.Row="0"
+            Grid.RowSpan="3"
+            Grid.Column="1"
+            Width="3"
             HorizontalAlignment="Center"
             VerticalAlignment="Stretch"
-            Grid.Column="1" Grid.Row="0" Width="3" Background="DarkGray" Grid.RowSpan="3"/>
-        <controls:ImageSourceControl CurrentImagePath="{Binding ResultImagePath}" Grid.Row="1" Grid.Column="2" />
+            Background="DarkGray"
+            ShowsPreview="False" />
+        <controls:ImageSourceControl
+            Grid.Row="1"
+            Grid.Column="2"
+            CurrentImagePath="{Binding ResultImagePath}" />
 
         <!--
         <Border
@@ -78,6 +157,6 @@
                 VerticalAlignment="Center"
                 Source="{Binding ResultImagePath}"
                 Stretch="UniformToFill" />
-        </Border>        -->
+        </Border>-->
     </Grid>
 </Window>

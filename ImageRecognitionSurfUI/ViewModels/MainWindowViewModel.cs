@@ -2,13 +2,22 @@
 using CommunityToolkit.Mvvm.Input;
 using ImageRecognitionSurfLib;
 using Microsoft.Win32;
+using OpenCvSharp;
+using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 
 namespace ImageRecognitionSurfUI.ViewModels;
 
 public partial class MainWindowViewModel : ObservableObject
 {
-    private readonly IImageRecognitionProcessor recProcessor;
+    private readonly OpenCvSharpProcessor recProcessor;
+
+    [ObservableProperty]
+    private string title = "CV recognizer";
+
+    [ObservableProperty]
+    private ProcessOptionsViewModel processOptionsViewModel;
 
     [NotifyCanExecuteChangedFor(nameof(ProcessImageCommand))]
     [ObservableProperty]
@@ -19,7 +28,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     public bool CanProcessImage => !string.IsNullOrEmpty(SourceImagePath) && File.Exists(SourceImagePath);
 
-    public MainWindowViewModel(IImageRecognitionProcessor recProcessor)
+    public MainWindowViewModel(OpenCvSharpProcessor recProcessor)
     {
         this.recProcessor = recProcessor;
     }
@@ -27,11 +36,20 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task Loaded()
     {
-        var resourceFiles = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.png", SearchOption.TopDirectoryOnly);
+        ProcessOptionsViewModel = new ProcessOptionsViewModel(this);
+
+        //Оригиналы скриншотов
+        string screenshotsFolder = Path.Combine(Directory.GetCurrentDirectory(), "screenshots");
+        if (!Directory.Exists(screenshotsFolder))
+        {
+            Directory.CreateDirectory(screenshotsFolder);
+        }
+        var resourceFiles = Directory.GetFiles(screenshotsFolder, "*.png", SearchOption.TopDirectoryOnly);
         if (resourceFiles.Any())
         {
             this.SourceImagePath = resourceFiles.First();
         }
+
     }
 
     [RelayCommand]
@@ -51,18 +69,37 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanProcessImage))]
     private async Task ProcessImage()
     {
-        ResultImagePath = await recProcessor.RecognizeDataToFile(SourceImagePath);
-        /*
+        Stopwatch sw = Stopwatch.StartNew();
+
+        ResultImagePath = "";
+
+        string result = string.Empty;
+
+        var iconFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "icons"));
+
         try
         {
-            Stopwatch sw = Stopwatch.StartNew();
-            ResultImagePath = await recProcessor.RecognizeDataToFile(SourceImagePath);
-            MessageBox.Show($"Распознавание выполнено за: {sw.Elapsed.TotalSeconds.ToString("F1")} сек.");
+            recProcessor.Threshold = double.Parse(processOptionsViewModel.Treshold.Replace(",", "."), new CultureInfo("en-EN"));
+            recProcessor.ThresholdMaxValue = double.Parse(processOptionsViewModel.TresholdMaxValue.Replace(",", "."), new CultureInfo("en-EN"));
+            recProcessor.ThresholdType = Enum.Parse<ThresholdTypes>(processOptionsViewModel.SelectedThresholdType);
+            recProcessor.PREDEFINED_ImreadMode = Enum.Parse<ImreadModes>(processOptionsViewModel.SelectedImreadMode);
+            recProcessor.PREDEFINED_TemplateMatchMode = Enum.Parse<TemplateMatchModes>(processOptionsViewModel.SelectedTemplateMatchMode);
+            recProcessor.PREDEFINED_RetrievalMode = Enum.Parse<RetrievalModes>(processOptionsViewModel.SelectedRetrievalMode);
+            recProcessor.PREDEFINED_ContourApproximationMode = Enum.Parse<ContourApproximationModes>(processOptionsViewModel.SelectedContourApproximationMode);
+            recProcessor.PREDEFINED_MatType = new MatType(int.Parse(processOptionsViewModel.SelectedMatType.Split("|")[0].Trim()));
+
+            result = await recProcessor.RecognizeDataToFile(SourceImagePath, iconFiles);
+
+            App.Current.Dispatcher.Invoke(() =>
+            {
+                ResultImagePath = result;
+                Title = $"Распознавание выполнено за: {sw.Elapsed.TotalSeconds.ToString("F1")} сек.";
+            });
+
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message + "\r\n\r\n" + ex.StackTrace, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            Title = $"Ошибка: {ex.Message}";
         }
-        */
     }
 }
