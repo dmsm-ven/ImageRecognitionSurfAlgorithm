@@ -1,10 +1,10 @@
-﻿using ImageRecognitionSurfAlgorithm.ViewModels;
-using ImageRecognitionSurfLib;
+﻿using ImageRecognitionSurfLib;
+using ImageRecognitionSurfUI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Windows;
 
-namespace ImageRecognitionSurfAlgorithm;
+namespace ImageRecognitionSurfUI;
 
 /// <summary>
 /// Interaction logic for App.xaml
@@ -17,7 +17,7 @@ public partial class App : Application
         AppHost = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
-                services.AddSingleton<ImageRecognitionSurfProcessor>();
+                services.AddSingleton<IImageRecognitionProcessor, EmguCV4ImageRecognitionSurfProcessor>();
                 services.AddSingleton<MainWindowViewModel>();
             })
             .Build();

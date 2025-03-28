@@ -6,11 +6,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 
-namespace ImageRecognitionSurfAlgorithm.ViewModels;
+namespace ImageRecognitionSurfUI.ViewModels;
 
 public partial class MainWindowViewModel : ObservableObject
 {
-    private readonly ImageRecognitionSurfProcessor recProcessor;
+    private readonly IImageRecognitionProcessor recProcessor;
 
     [NotifyCanExecuteChangedFor(nameof(ProcessImageCommand))]
     [ObservableProperty]
@@ -21,7 +21,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     public bool CanProcessImage => !string.IsNullOrEmpty(SourceImagePath) && File.Exists(SourceImagePath);
 
-    public MainWindowViewModel(ImageRecognitionSurfProcessor recProcessor)
+    public MainWindowViewModel(IImageRecognitionProcessor recProcessor)
     {
         this.recProcessor = recProcessor;
     }

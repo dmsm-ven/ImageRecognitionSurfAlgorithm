@@ -1,13 +1,13 @@
 ﻿<Window
-    x:Class="ImageRecognitionSurfAlgorithm.MainWindow"
+    x:Class="ImageRecognitionSurfUI.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="clr-namespace:ImageRecognitionSurfAlgorithm.Controls"
+    xmlns:controls="clr-namespace:ImageRecognitionSurfUI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
-    xmlns:local="clr-namespace:ImageRecognitionSurfAlgorithm"
+    xmlns:local="clr-namespace:ImageRecognitionSurfUI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:vm="clr-namespace:ImageRecognitionSurfAlgorithm.ViewModels"
+    xmlns:vm="clr-namespace:ImageRecognitionSurfUI.ViewModels"
     Title="MainWindow"
     Width="800"
     Height="450"
@@ -23,7 +23,8 @@
     </i:Interaction.Triggers>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -39,12 +40,17 @@
             Content="Загрузить изображение" />
         <Button
             Grid.Row="0"
-            Grid.Column="1"
+            Grid.Column="2"
             Margin="2"
             Command="{Binding ProcessImageCommand}"
             Content="Обработать изображение" />
         <controls:ImageSourceControl CurrentImagePath="{Binding SourceImagePath}" Grid.Row="1" Grid.Column="0" />
-        <controls:ImageSourceControl CurrentImagePath="{Binding ResultImagePath}" Grid.Row="1" Grid.Column="1" />
+        <GridSplitter 
+            ShowsPreview="False"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Stretch"
+            Grid.Column="1" Grid.Row="0" Width="3" Background="DarkGray" Grid.RowSpan="3"/>
+        <controls:ImageSourceControl CurrentImagePath="{Binding ResultImagePath}" Grid.Row="1" Grid.Column="2" />
 
         <!--
         <Border

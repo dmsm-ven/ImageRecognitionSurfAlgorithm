@@ -2,7 +2,7 @@
 using System.IO;
 using System.Windows.Data;
 
-namespace ImageRecognitionSurfAlgorithm.Converters;
+namespace ImageRecognitionSurfUI.Converters;
 
 public class FilePathToNameConverter : IValueConverter
 {

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.13.35913.81
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageRecognitionSurfAlgorithm", "ImageRecognitionSurfAlgorithm\ImageRecognitionSurfAlgorithm.csproj", "{6793C6FA-3C44-4E3E-852C-07319F98DC4D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageRecognitionSurfUI", "ImageRecognitionSurfUI\ImageRecognitionSurfUI.csproj", "{6793C6FA-3C44-4E3E-852C-07319F98DC4D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageRecognitionSurfLib", "ImageRecognitionSurfLib\ImageRecognitionSurfLib.csproj", "{0EB5ACF6-BEFB-4696-8EEC-428F57819033}"
 EndProject

@@ -1,7 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
 
-namespace ImageRecognitionSurfAlgorithm.Controls
+namespace ImageRecognitionSurfUI.Controls
 {
     /// <summary>
     /// Interaction logic for ImageSourceControl.xaml
