@@ -1,4 +1,5 @@
 ﻿using ImageRecognitionSurfAlgorithm.ViewModels;
+using ImageRecognitionSurfLib;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Windows;
@@ -16,6 +17,7 @@ public partial class App : Application
         AppHost = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
+                services.AddSingleton<ImageRecognitionSurfProcessor>();
                 services.AddSingleton<MainWindowViewModel>();
             })
             .Build();

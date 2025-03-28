@@ -1,14 +1,19 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ImageRecognitionSurfLib;
 using Microsoft.Win32;
+using System.Diagnostics;
 using System.IO;
+using System.Windows;
 
 namespace ImageRecognitionSurfAlgorithm.ViewModels;
 
 public partial class MainWindowViewModel : ObservableObject
 {
-    [ObservableProperty]
+    private readonly ImageRecognitionSurfProcessor recProcessor;
+
     [NotifyCanExecuteChangedFor(nameof(ProcessImageCommand))]
+    [ObservableProperty]
     private string sourceImagePath = string.Empty;
 
     [ObservableProperty]
@@ -16,9 +21,9 @@ public partial class MainWindowViewModel : ObservableObject
 
     public bool CanProcessImage => !string.IsNullOrEmpty(SourceImagePath) && File.Exists(SourceImagePath);
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(ImageRecognitionSurfProcessor recProcessor)
     {
-
+        this.recProcessor = recProcessor;
     }
 
     [RelayCommand]
@@ -48,6 +53,15 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanProcessImage))]
     private async Task ProcessImage()
     {
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        try
+        {
+            Stopwatch sw = Stopwatch.StartNew();
+            ResultImagePath = await recProcessor.RecognizeDataToFile(SourceImagePath);
+            MessageBox.Show($"Распознавание выполнено за: {sw.Elapsed.TotalSeconds.ToString("F1")} сек.");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message + "\r\n\r\n" + ex.StackTrace, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 }

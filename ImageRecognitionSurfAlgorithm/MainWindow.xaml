@@ -43,16 +43,35 @@
             Margin="2"
             Command="{Binding ProcessImageCommand}"
             Content="Обработать изображение" />
-        <controls:ImageSourceControl
-            Grid.Row="1"
+        <controls:ImageSourceControl CurrentImagePath="{Binding SourceImagePath}" Grid.Row="1" Grid.Column="0" />
+        <controls:ImageSourceControl CurrentImagePath="{Binding ResultImagePath}" Grid.Row="1" Grid.Column="1" />
+
+        <!--
+        <Border
+            Grid.Row="2"
             Grid.Column="0"
             Margin="2"
-            ImagePath="{Binding SourceImagePath, UpdateSourceTrigger=PropertyChanged}" />
-        <controls:ImageSourceControl
-            Grid.Row="1"
+            Padding="1"
+            BorderBrush="Gray"
+            BorderThickness="1">
+            <Image
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Source="{Binding SourceImagePath}"
+                Stretch="UniformToFill" />
+        </Border>
+        <Border
+            Grid.Row="2"
             Grid.Column="1"
             Margin="2"
-            ImagePath="{Binding ResultImagePath, UpdateSourceTrigger=PropertyChanged}" />
-
+            Padding="1"
+            BorderBrush="Gray"
+            BorderThickness="1">
+            <Image
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Source="{Binding ResultImagePath}"
+                Stretch="UniformToFill" />
+        </Border>        -->
     </Grid>
 </Window>

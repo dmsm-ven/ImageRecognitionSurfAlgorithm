@@ -8,17 +8,15 @@ namespace ImageRecognitionSurfAlgorithm.Controls
     /// </summary>
     public partial class ImageSourceControl : UserControl
     {
-
-        public string ImagePath
+        public string CurrentImagePath
         {
-            get { return (string)GetValue(ImagePathProperty); }
-            set { SetValue(ImagePathProperty, value); }
+            get { return (string)GetValue(CurrentImagePathProperty); }
+            set => SetValue(CurrentImagePathProperty, value);
         }
 
-        // Using a DependencyProperty as the backing store for ImagePath.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty ImagePathProperty =
-            DependencyProperty.Register("ImagePath", typeof(string), typeof(ImageSourceControl), new PropertyMetadata(string.Empty));
-
+        // Using a DependencyProperty as the backing store for CurrentImagePath.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty CurrentImagePathProperty =
+            DependencyProperty.Register("CurrentImagePath", typeof(string), typeof(ImageSourceControl), new PropertyMetadata("missing"));
 
         public ImageSourceControl()
         {
