@@ -17,7 +17,7 @@ public partial class App : Application
         AppHost = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
-                services.AddSingleton<IImageRecognitionProcessor, EmguCV4ImageRecognitionSurfProcessor>();
+                services.AddSingleton<IImageRecognitionProcessor, OpenCvSharpProcessor>();
                 services.AddSingleton<MainWindowViewModel>();
             })
             .Build();

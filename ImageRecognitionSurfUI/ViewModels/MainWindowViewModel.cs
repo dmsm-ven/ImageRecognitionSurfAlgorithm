@@ -2,9 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using ImageRecognitionSurfLib;
 using Microsoft.Win32;
-using System.Diagnostics;
 using System.IO;
-using System.Windows;
 
 namespace ImageRecognitionSurfUI.ViewModels;
 
@@ -53,6 +51,8 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanProcessImage))]
     private async Task ProcessImage()
     {
+        ResultImagePath = await recProcessor.RecognizeDataToFile(SourceImagePath);
+        /*
         try
         {
             Stopwatch sw = Stopwatch.StartNew();
@@ -63,5 +63,6 @@ public partial class MainWindowViewModel : ObservableObject
         {
             MessageBox.Show(ex.Message + "\r\n\r\n" + ex.StackTrace, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+        */
     }
 }
