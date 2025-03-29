@@ -71,7 +71,7 @@ public partial class MainWindowViewModel : ObservableObject
     private async Task RotateAgnosticCheck()
     {
         string testIcon = ProcessOptionsViewModel.SelectedIconFile.FullName;
-        await Task.Run(() => recProcessor.RotateAgnosticCheck(SourceImagePath, testIcon));
+        await recProcessor.RotateAgnosticCheck(SourceImagePath, testIcon);
     }
 
     [RelayCommand(CanExecute = nameof(CanProcessImage))]

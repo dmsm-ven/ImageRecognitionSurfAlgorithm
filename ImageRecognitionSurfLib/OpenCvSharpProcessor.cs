@@ -1,6 +1,8 @@
 ﻿using OpenCvSharp;
 using OpenCvSharp.XFeatures2D;
 using System.Collections.Concurrent;
+using System.Globalization;
+using System.Text.Json;
 
 namespace ImageRecognitionSurfLib;
 
@@ -37,12 +39,20 @@ public class OpenCvSharpProcessor
         };
     }
 
-    public void RotateAgnosticCheck(string screenshotPath, string iconPath)
+    public async Task RotateAgnosticCheck(string screenshotPath, string iconPath)
     {
-        var screenshotMat = new Mat(screenshotPath, ImreadModes.Color);
-        var iconMat = new Mat(iconPath, ImreadModes.Color);
+        ImreadModes mode = ImreadModes.AnyColor | ImreadModes.AnyDepth;
+        var screenshotMat = new Mat(screenshotPath);
+        var iconMat = new Mat(iconPath);
 
-        SurftRecognizer.DetectAndMatchFeaturesUsingSURF(screenshotMat, iconMat);
+        //screenshotMat = screenshotMat.CvtColor(ColorConversionCodes.BGR2GRAY);
+        //iconMat = iconMat.CvtColor(ColorConversionCodes.BGR2GRAY);
+
+        //screenshotMat = screenshotMat.Canny(40, 100, apertureSize: 3);
+        //iconMat = iconMat.Canny(40, 100, apertureSize: 3);
+        //SurftRecognizer.OnlyRectangle(screenshotMat);
+        await SurftRecognizer.DetectAndMatchFeaturesUsingSURF(screenshotMat, iconMat, Path.GetFileNameWithoutExtension(iconPath));
+
     }
 
     private async Task Recognize(string filePath, string outputFile, string outputFileMask, IEnumerable<string> iconFiles, int maxItems)
@@ -147,9 +157,38 @@ public static class SurftRecognizer
         High = 800
     }
 
-    public static void DetectAndMatchFeaturesUsingSURF(Mat mainImage, Mat subImage)
+    public static void OnlyRectangle(Mat mainImage)
     {
+        Point[][] contours;
+        HierarchyIndex[] hierarchy;
+        mainImage.FindContours(out contours, out hierarchy, RetrievalModes.Tree, ContourApproximationModes.ApproxSimple);
 
+        foreach (var contour in contours)
+        {
+            double epsilon = 0.02 * Cv2.ArcLength(contour, true);
+            Point[] approx = Cv2.ApproxPolyDP(contour, epsilon, true);
+
+            if (approx.Length == 4 && Cv2.IsContourConvex(approx))
+            {
+                // Calculate aspect ratio
+                var boundingRect = Cv2.BoundingRect(approx);
+                float aspectRatio = (float)boundingRect.Width / boundingRect.Height;
+
+                // Check if aspect ratio is close to 1 and angles are 90 degrees
+                if (Math.Abs(aspectRatio - 1) < 0.1)
+                {
+                    // This is likely a square
+                    Cv2.DrawContours(mainImage, new[] { approx }, -1, Scalar.Red, 2);
+                }
+            }
+        }
+
+        Cv2.ImShow("Detected Squares", mainImage);
+        Cv2.WaitKey();
+    }
+
+    public static async Task DetectAndMatchFeaturesUsingSURF(Mat mainImage, Mat subImage, string iconName)
+    {
         // Step 1: Create SURF detector
         var surf = SURF.Create(hessianThreshold: (int)HessianThresholdMode.High);
 
@@ -160,26 +199,47 @@ public static class SurftRecognizer
         surf.DetectAndCompute(subImage, null, out keypoints2, descriptors2);
 
         // Step 3: Match descriptors using BFMatcher
+        //var bfMatcher = new BFMatcher(NormTypes.L2); // Use L2 norm for SURF
         var bfMatcher = new BFMatcher(NormTypes.L2); // Use L2 norm for SURF
         var matches = bfMatcher.Match(descriptors1, descriptors2);
 
         // Step 4: Filter matches (e.g., sort by distance and threshold)
-        float max = matches.Max(mt => mt.Distance);
+        float maxDistance = matches.Max(mt => mt.Distance);
         var goodMatches = matches
             .OrderBy(m => m.Distance) // Sort by distance
-            .Take(3)
+            .Where(m => m.Distance < 0.4 * maxDistance)
+            .Take(10)
             .ToList();
 
         // Step 5: Visualize matches (Optional)
         Mat matchOutput = new();
         Cv2.DrawMatches(mainImage, keypoints1, subImage, keypoints2, goodMatches, matchOutput,
-            Scalar.Blue,
+            Scalar.Fuchsia,
             Scalar.Fuchsia,
             null,
-            DrawMatchesFlags.NotDrawSinglePoints | DrawMatchesFlags.DrawRichKeypoints);
+            DrawMatchesFlags.DrawRichKeypoints | DrawMatchesFlags.NotDrawSinglePoints);
+
+        await WriteLogLine(goodMatches, iconName);
 
         // Display matches
         Cv2.ImShow("Good Matches", matchOutput);
         Cv2.WaitKey();
     }
+
+    private static JsonSerializerOptions options = new() { WriteIndented = false };
+    private static string logFile = "log.txt";
+    private static async Task WriteLogLine(IEnumerable<DMatch> matches, string iconName)
+    {
+
+        await File.AppendAllLinesAsync(logFile, new string[] { iconName });
+        if (matches is not null)
+        {
+            var lines = matches
+                .Select(i => new MatchLogWrapper(i.TrainIdx, i.Distance.ToString("F2", new CultureInfo("en-EN"))))
+                .Select(m => JsonSerializer.Serialize(m, options)).ToArray();
+            await File.AppendAllLinesAsync(logFile, lines);
+        }
+    }
+
+    private record MatchLogWrapper(decimal TrainIdx, string Distance);
 }
