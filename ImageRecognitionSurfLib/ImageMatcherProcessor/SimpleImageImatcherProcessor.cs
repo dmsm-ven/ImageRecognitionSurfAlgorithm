@@ -1,7 +1,6 @@
 ﻿using OpenCvSharp;
 
-namespace ImageRecognitionSurfLib;
-
+namespace ImageRecognitionSurfLib.ImageMatcherProcessor;
 public class SimpleImageImatcherProcessor : ImageMatcherProcessorBase
 {
     private readonly TemplateMatchModes matchMode;

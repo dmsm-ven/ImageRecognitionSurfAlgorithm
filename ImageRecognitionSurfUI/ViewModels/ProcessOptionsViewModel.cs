@@ -34,6 +34,6 @@ public partial class ProcessOptionsViewModel : ObservableObject
 
     private async void MainWindowViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        await parentVm.ProcessImageCommand.ExecuteAsync(null);
+        // await parentVm.ProcessImageCommand.ExecuteAsync(null);
     }
 }

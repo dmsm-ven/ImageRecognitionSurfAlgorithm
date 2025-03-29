@@ -1,4 +1,5 @@
-﻿using OpenCvSharp;
+﻿using ImageRecognitionSurfLib.ImageMatcherProcessor;
+using OpenCvSharp;
 using OpenCvSharp.XFeatures2D;
 using System.Collections.Concurrent;
 using System.Globalization;
@@ -8,10 +9,7 @@ namespace ImageRecognitionSurfLib;
 
 public class OpenCvSharpProcessor
 {
-    public TemplateMatchModes? PREDEFINED_TemplateMatchMode { get; set; } = null;
-    public ImreadModes? PREDEFINED_ImreadMode { get; set; } = null;
-    public RetrievalModes? PREDEFINED_RetrievalMode { get; set; } = null;
-    public ContourApproximationModes? PREDEFINED_ContourApproximationMode { get; set; } = null;
+    public ImreadModes? PREDEFINED_ImreadMode { get; set; } = ImreadModes.Color;
     public MatType PREDEFINED_MatType { get; set; } = MatType.CV_8U;
     public Rect DeskSpellsPanelBounds = new(new Point(670, 140), new Size(590, 700));
 
@@ -22,20 +20,16 @@ public class OpenCvSharpProcessor
         string outputFileResult = Path.Combine(Directory.GetCurrentDirectory(), "cache",
             Path.GetFileNameWithoutExtension(filePath) + $"_result_{ext}");
 
-        string outputFileMask = Path.Combine(Directory.GetCurrentDirectory(), "cache",
-    Path.GetFileNameWithoutExtension(filePath) + $"_mask_{ext}");
-
         string dir = Path.GetDirectoryName(outputFileResult);
         if (!Directory.Exists(dir))
         {
             Directory.CreateDirectory(dir);
         }
 
-        await Recognize(filePath, outputFileResult, outputFileMask, iconFiles, maxItems);
+        await Recognize(filePath, outputFileResult, iconFiles, maxItems);
 
         return new ScreenshotRecognizeResult()
         {
-            MaskFilePath = outputFileMask,
             UpdatedScreenshotPath = outputFileResult
         };
     }
@@ -57,27 +51,21 @@ public class OpenCvSharpProcessor
         return outputPath;
     }
 
-    private async Task Recognize(string filePath, string outputFile, string outputFileMask, IEnumerable<string> iconFiles, int maxItems)
+    private async Task Recognize(string filePath, string outputFile, IEnumerable<string> iconFiles, int maxItems)
     {
         try
         {
             var icons = await GetPredefinedItems(iconFiles);
-            var originalScreenshot = new Mat(filePath);
-            var screenshotMat = PrepareMat(filePath);
 
-            var pointsInfo = await ExtractAllPositionsAsync(icons, screenshotMat, maxItems);
+            var screenshotMat = new Mat(filePath, ImreadModes.Color);
+            screenshotMat.ConvertTo(screenshotMat, PREDEFINED_MatType);
+            screenshotMat = new Mat(screenshotMat, DeskSpellsPanelBounds);
 
-            originalScreenshot.DrawSearchResultBorders(pointsInfo); // static helper метод
+            var pointsInfo = await ExtractAllPositionsAsync(screenshotMat, icons, maxItems);
 
-            using (var fs = File.Create(outputFile))
-            {
-                originalScreenshot.WriteToStream(fs);
-            }
-            using (var fs = File.Create(outputFileMask))
-            {
-                screenshotMat.WriteToStream(fs);
-            }
+            screenshotMat.DrawSearchResultBorders(pointsInfo); // static helper метод
 
+            screenshotMat.SaveImage(outputFile);
         }
         catch
         {
@@ -85,52 +73,34 @@ public class OpenCvSharpProcessor
         }
     }
 
-    private Mat PrepareMat(string fileName)
-    {
-        var mat = new Mat(fileName, PREDEFINED_ImreadMode.Value);
-        mat.ConvertTo(mat, PREDEFINED_MatType);
-        return mat;
-    }
-
-    private async Task<List<AbilityKnownLocation>> ExtractAllPositionsAsync(IEnumerable<AbilityMatWrapper> icons, Mat screenshotGray, int maxItems)
+    private async Task<List<AbilityKnownLocation>> ExtractAllPositionsAsync(Mat scrMat, IEnumerable<AbilityMatWrapper> icons, int maxItems)
     {
         //var matcher = new BFMatcherImageImatcherProcessor(keypointsDictionary, PREDEFINED_TemplateMatchMode.Value);
-        var matcher = new SimpleImageImatcherProcessor(PREDEFINED_TemplateMatchMode.Value);
+        var matcher = new SURFImageMtcherProcessor();
 
         ConcurrentBag<AbilityKnownLocation> bag = new();
 
-        var syncObj = new Object();
-        int skippedCount = 0;
-
-        var tasks = icons.Select(async (template) => await Task.Run(async () =>
+        var tasks = icons.Select(async (template) =>
         {
-            if (template.MatValue == null ||
-            screenshotGray.Depth() != template.MatValue.Depth() ||
-            screenshotGray.Type() != template.MatValue.Type())
+            var knownLocation = await matcher.GetKnownLocation(scrMat, template.MatValue, template.ImageName);
+
+            if (knownLocation != null)
             {
-                lock (syncObj)
-                {
-                    skippedCount++;
-                }
-                return; // skip
+                bag.Add(knownLocation);
+            }
+            else
+            {
+                await SurftRecognizer.WriteLogLine(template.ImageName + " was null");
             }
 
-            var knownLocation = await matcher.GetKnownLocation(screenshotGray, template.MatValue, template.ImageName);
-
-            bag.Add(knownLocation);
-
             template.MatValue?.Dispose();
-
-        }));
+        });
 
         await Task.WhenAll(tasks.ToArray());
 
-        /*List<AbilityKnownLocation> locations = IsSqDiffSelected() ?
-            bag.Where(a => a.Weight <= 0.5).OrderBy(a => a.Weight).Take(maxItems).ToList() :
-            bag.Where(a => a.Weight >= 0.5).OrderByDescending(a => a.Weight).Take(maxItems).ToList();
-        */
+        var sortedByWeight = bag.OrderBy(i => i.Weight).Take(maxItems).ToList();
 
-        return bag.ToList();
+        return sortedByWeight;
     }
 
     private async Task<AbilityMatWrapper[]> GetPredefinedItems(IEnumerable<string> iconFiles)
@@ -139,10 +109,13 @@ public class OpenCvSharpProcessor
 
         foreach (var file in iconFiles)
         {
+            var mat = new Mat(file, ImreadModes.Color);
+            mat.ConvertTo(mat, PREDEFINED_MatType);
+
             list.Add(new AbilityMatWrapper()
             {
                 ImageName = Path.GetFileNameWithoutExtension(file),
-                MatValue = PrepareMat(file)
+                MatValue = mat
             });
         }
 
@@ -211,7 +184,6 @@ internal static class SurftRecognizer
 
         Mat homography = Cv2.FindHomography(InputArray.Create(srcPoints), InputArray.Create(dstPoints), HomographyMethods.Ransac);
 
-
         //Фильтруем по дистанции
         float maxDistance = matches.Max(mt => mt.Distance);
         goodMatches = goodMatches
@@ -222,6 +194,7 @@ internal static class SurftRecognizer
 
         // Step 5: Visualize matches (Optional)
         Mat matchOutput = new();
+
         Cv2.DrawMatches(mainImage, keypoints1, subImage, keypoints2, goodMatches, matchOutput,
             Scalar.Fuchsia,
             Scalar.Fuchsia,
@@ -235,7 +208,11 @@ internal static class SurftRecognizer
         return matchOutput;
     }
 
-    private static async Task WriteLogLine(IEnumerable<DMatch> matches, string iconName)
+    public static async Task WriteLogLine(string message)
+    {
+        await File.AppendAllLinesAsync(logFile, new string[] { message });
+    }
+    public static async Task WriteLogLine(IEnumerable<DMatch> matches, string iconName)
     {
 
         await File.AppendAllLinesAsync(logFile, new string[] { iconName });
