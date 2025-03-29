@@ -69,6 +69,13 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private async Task RotateAgnosticCheck()
+    {
+        string testIcon = Path.Combine(Directory.GetCurrentDirectory(), "icons", "alchemist_chemical_rage.png");
+        await Task.Run(() => recProcessor.RotateAgnosticCheck(SourceImagePath, testIcon));
+    }
+
     [RelayCommand(CanExecute = nameof(CanProcessImage))]
     private async Task ProcessImage()
     {

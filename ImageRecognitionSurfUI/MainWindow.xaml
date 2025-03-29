@@ -46,10 +46,17 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <Button
-                Grid.Row="0"
-                Command="{Binding ProcessImageCommand}"
-                Content="Обработать изображение" />
+            <UniformGrid Columns="2">
+                <Button
+                    Grid.Row="0"
+                    Command="{Binding ProcessImageCommand}"
+                    Content="Обработать изображение" />
+                <Button
+                    Grid.Row="0"
+                    Command="{Binding RotateAgnosticCheckCommand}"
+                    Content="Тест без зависимости к наклону" />
+            </UniformGrid>
+
             <Expander
                 Grid.Row="1"
                 DataContext="{Binding ProcessOptionsViewModel}"
@@ -85,8 +92,8 @@
                             Margin="2"
                             ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableImreadModes}"
                             SelectedValue="{Binding SelectedImreadMode, UpdateSourceTrigger=PropertyChanged}" />
-                    </UniformGrid> 
-                    
+                    </UniformGrid>
+
                     <UniformGrid Columns="2">
                         <TextBlock Margin="2" Text="MatType" />
                         <ComboBox

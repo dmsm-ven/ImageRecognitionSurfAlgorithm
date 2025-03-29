@@ -1,7 +1,9 @@
 ﻿using OpenCvSharp;
+using OpenCvSharp.XFeatures2D;
 using System.Collections.Concurrent;
 
 namespace ImageRecognitionSurfLib;
+
 public class OpenCvSharpProcessor
 {
     public TemplateMatchModes? PREDEFINED_TemplateMatchMode { get; set; } = null;
@@ -35,6 +37,14 @@ public class OpenCvSharpProcessor
         };
     }
 
+    public void RotateAgnosticCheck(string screenshotPath, string iconPath)
+    {
+        var screenshotMat = new Mat(screenshotPath, ImreadModes.Grayscale);
+        var iconMat = new Mat(iconPath, ImreadModes.Grayscale);
+
+        SurftRecognizer.DetectAndMatchFeaturesUsingSURF(screenshotMat, iconMat);
+    }
+
     private async Task Recognize(string filePath, string outputFile, string outputFileMask, IEnumerable<string> iconFiles, int maxItems)
     {
         try
@@ -43,13 +53,9 @@ public class OpenCvSharpProcessor
             var originalScreenshot = new Mat(filePath);
             var screenshotMat = PrepareMat(filePath);
 
-            var pointsInfo = await ExtractAllPositionsAsync(icons, screenshotMat);
+            var pointsInfo = await ExtractAllPositionsAsync(icons, screenshotMat, maxItems);
 
-            var limitedpointsInfo = pointsInfo
-                .Take(maxItems)
-                .ToArray();
-
-            DrawSearchResultBorders(limitedpointsInfo, originalScreenshot);
+            originalScreenshot.DrawSearchResultBorders(pointsInfo); // static helper метод
 
             using (var fs = File.Create(outputFile))
             {
@@ -71,19 +77,20 @@ public class OpenCvSharpProcessor
     {
         var mat = new Mat(fileName, PREDEFINED_ImreadMode.Value);
         mat.ConvertTo(mat, PREDEFINED_MatType);
-        //mat = mat.CvtColor(ColorConversionCodes.YUV420sp2RGBA);
-        //mat = mat.Threshold(127, 255, ThresholdTypes.Binary);
         return mat;
     }
 
-    private async Task<List<AbilityKnownLocation>> ExtractAllPositionsAsync(IEnumerable<AbilityMatWrapper> icons, Mat screenshotGray)
+    private async Task<List<AbilityKnownLocation>> ExtractAllPositionsAsync(IEnumerable<AbilityMatWrapper> icons, Mat screenshotGray, int maxItems)
     {
+        //var matcher = new BFMatcherImageImatcherProcessor(keypointsDictionary, PREDEFINED_TemplateMatchMode.Value);
+        var matcher = new SimpleImageImatcherProcessor(PREDEFINED_TemplateMatchMode.Value);
+
         ConcurrentBag<AbilityKnownLocation> bag = new();
 
         var syncObj = new Object();
         int skippedCount = 0;
 
-        var tasks = icons.Select(async (template) => await Task.Run(() =>
+        var tasks = icons.Select(async (template) => await Task.Run(async () =>
         {
             if (template.MatValue == null ||
             screenshotGray.Depth() != template.MatValue.Depth() ||
@@ -96,67 +103,22 @@ public class OpenCvSharpProcessor
                 return; // skip
             }
 
-            var matchTemplate = screenshotGray.MatchTemplate(template.MatValue, PREDEFINED_TemplateMatchMode.Value);
+            var knownLocation = await matcher.GetKnownLocation(screenshotGray, template.MatValue, template.ImageName);
 
-            matchTemplate.MinMaxLoc(out double minVal, out double maxVal_, out var minLoc, out var maxLoc);
-
-            //var allResults = matchTemplate.FindContoursAsArray(PREDEFINED_RetrievalMode.Value, PREDEFINED_ContourApproximationMode.Value);
+            bag.Add(knownLocation);
 
             template.MatValue?.Dispose();
-            matchTemplate?.Dispose();
 
-            bag.Add(new AbilityKnownLocation()
-            {
-                Position = minLoc,
-                Weight = minVal,
-                Title = template.ImageName
-            });
         }));
 
         await Task.WhenAll(tasks.ToArray());
 
-        return bag
-            .OrderBy(i => i.Weight)
-            .ToList();
-    }
+        /*List<AbilityKnownLocation> locations = IsSqDiffSelected() ?
+            bag.Where(a => a.Weight <= 0.5).OrderBy(a => a.Weight).Take(maxItems).ToList() :
+            bag.Where(a => a.Weight >= 0.5).OrderByDescending(a => a.Weight).Take(maxItems).ToList();
+        */
 
-    private static void DrawSearchResultBorders(IEnumerable<AbilityKnownLocation> items,
-        Mat screenshotOriginal,
-        bool drawTotal = true,
-        bool drawNumber = true,
-        bool drawList = true)
-    {
-        Point titleStartPoint = new(50, 200);
-        int titleRowOffset = 15;
-        int defaultIconSize = 55;
-        int totalPoints = 0;
-
-        int i = 0;
-        foreach (var item in items)
-        {
-            string text = item.Title.FillOverflow(32);
-
-            Rect borderRect = new(item.Position, new(defaultIconSize, defaultIconSize));
-            Cv2.Rectangle(screenshotOriginal, borderRect, Scalar.Fuchsia, 2);
-
-            if (drawNumber)
-            {
-                var numberLocation = new Point(item.Position.X + (defaultIconSize / 2), item.Position.Y + (defaultIconSize / 2));
-                Cv2.PutText(screenshotOriginal, i.ToString(), numberLocation, HersheyFonts.HersheyPlain, 2, Scalar.Yellow);
-            }
-            if (drawList)
-            {
-                var labelLocation = new Point(titleStartPoint.X, titleStartPoint.Y + (i * titleRowOffset));
-                Cv2.PutText(screenshotOriginal, $"{i}. {text}", labelLocation, HersheyFonts.HersheyPlain, 1, Scalar.CornflowerBlue);
-            }
-            i++;
-            totalPoints++;
-        }
-
-        if (drawTotal)
-        {
-            Cv2.PutText(screenshotOriginal, totalPoints.ToString(), new Point(150, 150), HersheyFonts.HersheyPlain, 5, Scalar.Red);
-        }
+        return bag.ToList();
     }
 
     private async Task<AbilityMatWrapper[]> GetPredefinedItems(IEnumerable<string> iconFiles)
@@ -176,15 +138,48 @@ public class OpenCvSharpProcessor
     }
 }
 
-public class ScreenshotRecognizeResult
+public static class SurftRecognizer
 {
-    public string UpdatedScreenshotPath { get; set; }
-    public string MaskFilePath { get; set; }
-}
+    private enum HessianThresholdMode
+    {
+        Regular = 200,
+        Balanced = 400,
+        High = 800
+    }
 
-internal class AbilityKnownLocation
-{
-    public Point Position { get; set; }
-    public double Weight { get; set; }
-    public string Title { get; set; }
+    public static void DetectAndMatchFeaturesUsingSURF(Mat mainImage, Mat subImage)
+    {
+
+        // Step 1: Create SURF detector
+        var surf = SURF.Create(hessianThreshold: (int)HessianThresholdMode.High);
+
+        // Step 2: Detect keypoints and compute descriptors
+        KeyPoint[] keypoints1, keypoints2;
+        Mat descriptors1 = new(), descriptors2 = new();
+        surf.DetectAndCompute(mainImage, null, out keypoints1, descriptors1);
+        surf.DetectAndCompute(subImage, null, out keypoints2, descriptors2);
+
+        // Step 3: Match descriptors using BFMatcher
+        var bfMatcher = new BFMatcher(NormTypes.L2); // Use L2 norm for SURF
+        var matches = bfMatcher.Match(descriptors1, descriptors2);
+
+        // Step 4: Filter matches (e.g., sort by distance and threshold)
+        float max = matches.Max(mt => mt.Distance);
+        var goodMatches = matches
+            .OrderBy(m => m.Distance) // Sort by distance
+            .Take(3)
+            .ToList();
+
+        // Step 5: Visualize matches (Optional)
+        Mat matchOutput = new();
+        Cv2.DrawMatches(mainImage, keypoints1, subImage, keypoints2, goodMatches, matchOutput,
+            Scalar.Blue,
+            Scalar.Fuchsia,
+            null,
+            DrawMatchesFlags.NotDrawSinglePoints | DrawMatchesFlags.DrawRichKeypoints);
+
+        // Display matches
+        Cv2.ImShow("Good Matches", matchOutput);
+        Cv2.WaitKey();
+    }
 }
