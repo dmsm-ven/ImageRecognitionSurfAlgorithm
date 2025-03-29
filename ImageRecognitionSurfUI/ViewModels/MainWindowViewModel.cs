@@ -2,8 +2,6 @@
 using CommunityToolkit.Mvvm.Input;
 using ImageRecognitionSurfLib;
 using Microsoft.Win32;
-using OpenCvSharp;
-using System.Diagnostics;
 using System.IO;
 
 namespace ImageRecognitionSurfUI.ViewModels;
@@ -72,43 +70,13 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task RotateAgnosticCheck()
     {
-        string testIcon = Path.Combine(Directory.GetCurrentDirectory(), "icons", "alchemist_chemical_rage.png");
+        string testIcon = ProcessOptionsViewModel.SelectedIconFile.FullName;
         await Task.Run(() => recProcessor.RotateAgnosticCheck(SourceImagePath, testIcon));
     }
 
     [RelayCommand(CanExecute = nameof(CanProcessImage))]
     private async Task ProcessImage()
     {
-        Stopwatch sw = Stopwatch.StartNew();
 
-        ResultImagePath = "";
-
-
-        var iconFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "icons"), "*.png", SearchOption.TopDirectoryOnly);
-
-        try
-        {
-            recProcessor.PREDEFINED_ImreadMode = Enum.Parse<ImreadModes>(processOptionsViewModel.SelectedImreadMode);
-            recProcessor.PREDEFINED_TemplateMatchMode = Enum.Parse<TemplateMatchModes>(processOptionsViewModel.SelectedTemplateMatchMode);
-            recProcessor.PREDEFINED_RetrievalMode = Enum.Parse<RetrievalModes>(processOptionsViewModel.SelectedRetrievalMode);
-            recProcessor.PREDEFINED_ContourApproximationMode = Enum.Parse<ContourApproximationModes>(processOptionsViewModel.SelectedContourApproximationMode);
-            recProcessor.PREDEFINED_MatType = new MatType(int.Parse(processOptionsViewModel.SelectedMatType.Split("|")[0].Trim()));
-
-
-            var result = await recProcessor.RecognizeDataToFile(storedOriginalSourcePath, iconFiles, maxItems: 12 + 36);
-
-            App.Current.Dispatcher.Invoke(() =>
-            {
-                SourceImagePath = result.UpdatedScreenshotPath;
-                ResultImagePath = result.MaskFilePath;
-
-                Title = $"Распознавание выполнено за: {sw.Elapsed.TotalSeconds.ToString("F1")} сек.";
-            });
-
-        }
-        catch (Exception ex)
-        {
-            Title = $"Ошибка: {ex.Message}";
-        }
     }
 }

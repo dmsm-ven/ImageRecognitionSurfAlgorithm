@@ -63,6 +63,7 @@
                 Header="Опции"
                 IsExpanded="True">
                 <StackPanel Orientation="Vertical">
+                    <!--
                     <UniformGrid Columns="2">
                         <TextBlock Margin="2" Text="ContourApproximationModes" />
                         <ComboBox
@@ -100,6 +101,14 @@
                             Margin="2"
                             ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableMatTypes}"
                             SelectedValue="{Binding SelectedMatType, UpdateSourceTrigger=PropertyChanged}" />
+                    </UniformGrid> -->
+                    <UniformGrid Columns="2">
+                        <TextBlock Margin="2" Text="Test icon file" />
+                        <ComboBox
+                            Margin="2"
+                            ItemsSource="{Binding IconFiles}"
+                            DisplayMemberPath="Name"
+                            SelectedValue="{Binding SelectedIconFile, UpdateSourceTrigger=PropertyChanged}" />
                     </UniformGrid>
                 </StackPanel>
             </Expander>

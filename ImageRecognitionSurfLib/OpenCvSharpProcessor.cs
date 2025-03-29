@@ -39,8 +39,8 @@ public class OpenCvSharpProcessor
 
     public void RotateAgnosticCheck(string screenshotPath, string iconPath)
     {
-        var screenshotMat = new Mat(screenshotPath, ImreadModes.Grayscale);
-        var iconMat = new Mat(iconPath, ImreadModes.Grayscale);
+        var screenshotMat = new Mat(screenshotPath, ImreadModes.Color);
+        var iconMat = new Mat(iconPath, ImreadModes.Color);
 
         SurftRecognizer.DetectAndMatchFeaturesUsingSURF(screenshotMat, iconMat);
     }
