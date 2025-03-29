@@ -86,7 +86,7 @@ public partial class ProcessOptionsViewModel : ObservableObject
     private string selectedTemplateMatchMode = GetAvailableTemplateMatchModes.Single(i => i == "SqDiffNormed");
 
     [ObservableProperty]
-    private string selectedImreadMode = GetAvailableImreadModes.Single(i => i == "Grayscale");
+    private string selectedImreadMode = GetAvailableImreadModes.Single(i => i == "Color");
 
     [ObservableProperty]
     private string selectedRetrievalMode = GetAvailableRetrievalModes.Single(i => i == "CComp");

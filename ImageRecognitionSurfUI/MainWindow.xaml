@@ -57,21 +57,6 @@
                 IsExpanded="True">
                 <StackPanel Orientation="Vertical">
                     <UniformGrid Columns="2">
-                        <TextBlock Margin="2" Text="Trashold" />
-                        <TextBox Margin="2" Text="{Binding Treshold, UpdateSourceTrigger=LostFocus}" />
-                    </UniformGrid>
-                    <UniformGrid Columns="2">
-                        <TextBlock Margin="2" Text="MaxValue" />
-                        <TextBox Margin="2" Text="{Binding TresholdMaxValue, UpdateSourceTrigger=LostFocus}" />
-                    </UniformGrid>
-                    <UniformGrid Columns="2">
-                        <TextBlock Margin="2" Text="ThresholdTypes" />
-                        <ComboBox
-                            Margin="2"
-                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableThresholdTypes}"
-                            SelectedValue="{Binding SelectedThresholdType, UpdateSourceTrigger=PropertyChanged}" />
-                    </UniformGrid>
-                    <UniformGrid Columns="2">
                         <TextBlock Margin="2" Text="ContourApproximationModes" />
                         <ComboBox
                             Margin="2"

@@ -32,6 +32,7 @@ public partial class App : Application
         MainWindow.DataContext = AppHost.Services.GetService<MainWindowViewModel>();
         MainWindow.Show();
     }
+
     protected override async void OnExit(ExitEventArgs e)
     {
         await ClearCacheFolder();
@@ -49,6 +50,7 @@ public partial class App : Application
         int retryCount = 0;
         int retryMax = 5;
         TimeSpan delay = TimeSpan.FromSeconds(1);
+        bool isDone = false;
 
         do
         {
@@ -58,14 +60,17 @@ public partial class App : Application
                 if (cacheFiles.Any())
                 {
                     cacheFiles.ForEach(File.Delete);
-                    return;
                 }
+                isDone = true;
             }
             catch
             {
                 retryCount++;
             }
-            await Task.Delay(delay);
-        } while (retryCount <= retryMax);
+            if (!isDone)
+            {
+                await Task.Delay(delay);
+            }
+        } while (!isDone && retryCount <= retryMax);
     }
 }

@@ -4,7 +4,6 @@ using ImageRecognitionSurfLib;
 using Microsoft.Win32;
 using OpenCvSharp;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 
 namespace ImageRecognitionSurfUI.ViewModels;
@@ -12,6 +11,8 @@ namespace ImageRecognitionSurfUI.ViewModels;
 public partial class MainWindowViewModel : ObservableObject
 {
     private readonly OpenCvSharpProcessor recProcessor;
+
+    private string? storedOriginalSourcePath = null;
 
     [ObservableProperty]
     private string title = "CV recognizer";
@@ -48,6 +49,7 @@ public partial class MainWindowViewModel : ObservableObject
         if (resourceFiles.Any())
         {
             this.SourceImagePath = resourceFiles.First();
+            storedOriginalSourcePath = this.SourceImagePath;
         }
 
     }
@@ -63,6 +65,7 @@ public partial class MainWindowViewModel : ObservableObject
         if (ofd.ShowDialog() == true)
         {
             SourceImagePath = ofd.FileName;
+            storedOriginalSourcePath = SourceImagePath;
         }
     }
 
@@ -73,26 +76,25 @@ public partial class MainWindowViewModel : ObservableObject
 
         ResultImagePath = "";
 
-        string result = string.Empty;
 
-        var iconFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "icons"));
+        var iconFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "icons"), "*.png", SearchOption.TopDirectoryOnly);
 
         try
         {
-            recProcessor.Threshold = double.Parse(processOptionsViewModel.Treshold.Replace(",", "."), new CultureInfo("en-EN"));
-            recProcessor.ThresholdMaxValue = double.Parse(processOptionsViewModel.TresholdMaxValue.Replace(",", "."), new CultureInfo("en-EN"));
-            recProcessor.ThresholdType = Enum.Parse<ThresholdTypes>(processOptionsViewModel.SelectedThresholdType);
             recProcessor.PREDEFINED_ImreadMode = Enum.Parse<ImreadModes>(processOptionsViewModel.SelectedImreadMode);
             recProcessor.PREDEFINED_TemplateMatchMode = Enum.Parse<TemplateMatchModes>(processOptionsViewModel.SelectedTemplateMatchMode);
             recProcessor.PREDEFINED_RetrievalMode = Enum.Parse<RetrievalModes>(processOptionsViewModel.SelectedRetrievalMode);
             recProcessor.PREDEFINED_ContourApproximationMode = Enum.Parse<ContourApproximationModes>(processOptionsViewModel.SelectedContourApproximationMode);
             recProcessor.PREDEFINED_MatType = new MatType(int.Parse(processOptionsViewModel.SelectedMatType.Split("|")[0].Trim()));
 
-            result = await recProcessor.RecognizeDataToFile(SourceImagePath, iconFiles);
+
+            var result = await recProcessor.RecognizeDataToFile(storedOriginalSourcePath, iconFiles, maxItems: 12 + 36);
 
             App.Current.Dispatcher.Invoke(() =>
             {
-                ResultImagePath = result;
+                SourceImagePath = result.UpdatedScreenshotPath;
+                ResultImagePath = result.MaskFilePath;
+
                 Title = $"Распознавание выполнено за: {sw.Elapsed.TotalSeconds.ToString("F1")} сек.";
             });
 
