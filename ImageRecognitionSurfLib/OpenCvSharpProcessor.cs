@@ -13,6 +13,7 @@ public class OpenCvSharpProcessor
     public RetrievalModes? PREDEFINED_RetrievalMode { get; set; } = null;
     public ContourApproximationModes? PREDEFINED_ContourApproximationMode { get; set; } = null;
     public MatType PREDEFINED_MatType { get; set; } = MatType.CV_8U;
+    public Rect DeskSpellsPanelBounds = new(new Point(670, 140), new Size(590, 700));
 
     public async Task<ScreenshotRecognizeResult> RecognizeDataToFile(string filePath, IEnumerable<string> iconFiles, int maxItems)
     {
@@ -39,20 +40,21 @@ public class OpenCvSharpProcessor
         };
     }
 
-    public async Task RotateAgnosticCheck(string screenshotPath, string iconPath)
+    public async Task<string> RotateAgnosticCheck(string screenshotPath, string iconPath)
     {
-        ImreadModes mode = ImreadModes.AnyColor | ImreadModes.AnyDepth;
-        var screenshotMat = new Mat(screenshotPath);
-        var iconMat = new Mat(iconPath);
+        ImreadModes mode = ImreadModes.Color;
+        var screenshotMat = new Mat(screenshotPath, mode);
+        screenshotMat = new Mat(screenshotMat, DeskSpellsPanelBounds);
+        var iconMat = new Mat(iconPath, mode);
 
-        //screenshotMat = screenshotMat.CvtColor(ColorConversionCodes.BGR2GRAY);
-        //iconMat = iconMat.CvtColor(ColorConversionCodes.BGR2GRAY);
+        string name = Path.Combine(Path.GetFileNameWithoutExtension(screenshotPath) + $"_result_{DateTime.Now.Ticks}" + Path.GetExtension(screenshotPath));
+        string outputPath = Path.Combine(Directory.GetCurrentDirectory(), "cache", name);
 
-        //screenshotMat = screenshotMat.Canny(40, 100, apertureSize: 3);
-        //iconMat = iconMat.Canny(40, 100, apertureSize: 3);
-        //SurftRecognizer.OnlyRectangle(screenshotMat);
-        await SurftRecognizer.DetectAndMatchFeaturesUsingSURF(screenshotMat, iconMat, Path.GetFileNameWithoutExtension(iconPath));
+        var resultImage = await SurftRecognizer.DetectAndMatchFeaturesUsingSURF(screenshotMat, iconMat, Path.GetFileNameWithoutExtension(iconPath));
 
+        resultImage.SaveImage(outputPath);
+
+        return outputPath;
     }
 
     private async Task Recognize(string filePath, string outputFile, string outputFileMask, IEnumerable<string> iconFiles, int maxItems)
@@ -148,14 +150,11 @@ public class OpenCvSharpProcessor
     }
 }
 
-public static class SurftRecognizer
+internal static class SurftRecognizer
 {
-    private enum HessianThresholdMode
-    {
-        Regular = 200,
-        Balanced = 400,
-        High = 800
-    }
+    private static JsonSerializerOptions options = new() { WriteIndented = false };
+
+    private static string logFile = "log.txt";
 
     public static void OnlyRectangle(Mat mainImage)
     {
@@ -187,14 +186,15 @@ public static class SurftRecognizer
         Cv2.WaitKey();
     }
 
-    public static async Task DetectAndMatchFeaturesUsingSURF(Mat mainImage, Mat subImage, string iconName)
+    public static async Task<Mat> DetectAndMatchFeaturesUsingSURF(Mat mainImage, Mat subImage, string iconName)
     {
         // Step 1: Create SURF detector
-        var surf = SURF.Create(hessianThreshold: (int)HessianThresholdMode.High);
+        var surf = SURF.Create(hessianThreshold: 100);
 
         // Step 2: Detect keypoints and compute descriptors
         KeyPoint[] keypoints1, keypoints2;
         Mat descriptors1 = new(), descriptors2 = new();
+
         surf.DetectAndCompute(mainImage, null, out keypoints1, descriptors1);
         surf.DetectAndCompute(subImage, null, out keypoints2, descriptors2);
 
@@ -204,11 +204,20 @@ public static class SurftRecognizer
         var matches = bfMatcher.Match(descriptors1, descriptors2);
 
         // Step 4: Filter matches (e.g., sort by distance and threshold)
+        List<DMatch> goodMatches = new(matches);
+
+        var srcPoints = goodMatches.Select(m => keypoints2[m.TrainIdx].Pt).ToArray();
+        var dstPoints = goodMatches.Select(m => keypoints1[m.QueryIdx].Pt).ToArray();
+
+        Mat homography = Cv2.FindHomography(InputArray.Create(srcPoints), InputArray.Create(dstPoints), HomographyMethods.Ransac);
+
+
+        //Фильтруем по дистанции
         float maxDistance = matches.Max(mt => mt.Distance);
-        var goodMatches = matches
+        goodMatches = goodMatches
             .OrderBy(m => m.Distance) // Sort by distance
-            .Where(m => m.Distance < 0.4 * maxDistance)
-            .Take(10)
+            .Where(m => m.Distance < 0.35 * maxDistance)
+            .Take(3)
             .ToList();
 
         // Step 5: Visualize matches (Optional)
@@ -222,12 +231,10 @@ public static class SurftRecognizer
         await WriteLogLine(goodMatches, iconName);
 
         // Display matches
-        Cv2.ImShow("Good Matches", matchOutput);
-        Cv2.WaitKey();
+
+        return matchOutput;
     }
 
-    private static JsonSerializerOptions options = new() { WriteIndented = false };
-    private static string logFile = "log.txt";
     private static async Task WriteLogLine(IEnumerable<DMatch> matches, string iconName)
     {
 
@@ -240,6 +247,13 @@ public static class SurftRecognizer
             await File.AppendAllLinesAsync(logFile, lines);
         }
     }
-
-    private record MatchLogWrapper(decimal TrainIdx, string Distance);
 }
+
+internal enum HessianThresholdMode
+{
+    Regular = 200,
+    Balanced = 400,
+    High = 800
+}
+
+internal record MatchLogWrapper(decimal TrainIdx, string Distance);
