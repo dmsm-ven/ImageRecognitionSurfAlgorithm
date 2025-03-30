@@ -30,32 +30,39 @@ public class OpenCvSharpProcessor
         get => SurftRecognizer.HessianThreshold;
         set => SurftRecognizer.HessianThreshold = value;
     }
+
     public double SurftRecognizer_DistanceMinThreshold
     {
         get => SurftRecognizer.DistanceMinThreshold;
         set => SurftRecognizer.DistanceMinThreshold = value;
     }
+
     public NormTypes SurftRecognizer_NormType
     {
         get => SurftRecognizer.NormType;
         set => SurftRecognizer.NormType = value;
     }
 
-
-
-    public Task<List<string>> RecognizeAbilityNames(string filePath, IEnumerable<string> iconFiles, int maxItems)
+    public async Task<List<string>> RecognizeAbilityNames(string filePath, IEnumerable<string> iconFiles, int maxItems)
     {
-        return RecognizeAbilityNamesBase(filePath, maxItems, iconFiles, null);
+        ConcurrentDictionary<string, byte[]> bag = new();
+        var iconFilesDataTasks = iconFiles.Select(async (i) => await Task.Run(async () =>
+        {
+            var data = await File.ReadAllBytesAsync(i);
+            bag[Path.GetFileNameWithoutExtension(i)] = data;
+        }));
+
+        await Task.WhenAll(iconFilesDataTasks);
+
+        return await RecognizeAbilityNamesBase(filePath, bag.OrderBy(kvp => kvp.Value).ToDictionary(), maxItems);
     }
 
     public Task<List<string>> RecognizeAbilityNames(string filePath, IDictionary<string, byte[]> iconFilesData, int maxItems)
     {
-        return RecognizeAbilityNamesBase(filePath, maxItems, null, iconFilesData);
+        return RecognizeAbilityNamesBase(filePath, iconFilesData, maxItems);
     }
 
-    private async Task<List<string>> RecognizeAbilityNamesBase(string filePath, int maxItems,
-        IEnumerable<string> iconFiles,
-        IDictionary<string, byte[]> iconFilesData)
+    private async Task<List<string>> RecognizeAbilityNamesBase(string filePath, IDictionary<string, byte[]> iconFilesData, int maxItems)
     {
         if (string.IsNullOrWhiteSpace(filePath) || maxItems == 0)
         {
@@ -75,11 +82,10 @@ public class OpenCvSharpProcessor
 
         try
         {
-            var iconsTask = iconFiles != null ? GetPredefinedItems(iconFiles) : GetPredefinedItems(iconFilesData);
 
-            var icons = await iconsTask;
+            var icons = await GetPredefinedItems(iconFilesData)
 
-            var screenshotMat = BuildMat(filePath, isMain: true);
+            var screenshotMat = BuildMat(File.ReadAllBytes(filePath), isMain: true);
 
             var pointsInfo = await ExtractAllPositionsAsync(screenshotMat, icons, maxItems);
 
@@ -167,38 +173,10 @@ public class OpenCvSharpProcessor
 
     }
 
-    private Mat? BuildMat(byte[]? fileData, bool isMain)
+    private Mat? BuildMat(byte[] data, bool isMain)
     {
-        try
-        {
-            var mat = Cv2.ImDecode(fileData, ImreadMode);
-            mat = ApplyMatOptions(mat, isMain);
-            return mat;
-        }
-        catch
-        {
-            throw;
-        }
-        return null;
-    }
+        var mat = Cv2.ImDecode(data, ImreadMode);
 
-    private Mat? BuildMat(string fileName, bool isMain)
-    {
-        try
-        {
-            var mat = new Mat(fileName, ImreadMode);
-            mat = ApplyMatOptions(mat, isMain);
-            return mat;
-        }
-        catch
-        {
-            throw;
-        }
-        return null;
-    }
-
-    private Mat? ApplyMatOptions(Mat? mat, bool isMain)
-    {
         if (!isMain)
         {
             mat = mat.Resize(ICON_SIZE);
@@ -220,6 +198,7 @@ public class OpenCvSharpProcessor
             mat.ConvertTo(mat, PREDEFINED_MatType);
             mat = mat.Threshold(Threshold_Thresh, Threshold_MaxVal, Threshold_Type);
         }
+
         if (isMain)
         {
             mat = new Mat(mat, DeskSpellsPanelBounds);
@@ -233,7 +212,7 @@ public class OpenCvSharpProcessor
         {
             var icons = await GetPredefinedItems(iconFiles);
 
-            var screenshotMat = BuildMat(filePath, isMain: true);
+            var screenshotMat = BuildMat(File.ReadAllBytes(filePath), isMain: true);
 
             var pointsInfo = await ExtractAllPositionsAsync(screenshotMat, icons, maxItems);
 
@@ -290,23 +269,6 @@ public class OpenCvSharpProcessor
             list.Add(new AbilityMatWrapper()
             {
                 ImageName = Path.GetFileNameWithoutExtension(file.Key),
-                MatValue = mat
-            });
-        }
-        return list.ToArray();
-    }
-
-    private async Task<AbilityMatWrapper[]> GetPredefinedItems(IEnumerable<string> iconFiles)
-    {
-        var list = new List<AbilityMatWrapper>();
-
-        foreach (var file in iconFiles)
-        {
-            Mat? mat = BuildMat(file, isMain: false);
-
-            list.Add(new AbilityMatWrapper()
-            {
-                ImageName = Path.GetFileNameWithoutExtension(file),
                 MatValue = mat
             });
         }
