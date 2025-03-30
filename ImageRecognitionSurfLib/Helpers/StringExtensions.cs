@@ -1,6 +1,6 @@
-﻿namespace ImageRecognitionSurfLib;
+﻿namespace ImageRecognitionSurfLib.Helpers;
 
-public static class StringExtensions
+internal static class StringExtensions
 {
     public static string FillOverflow(this string str, int maxLength = 16, string overflowString = "...")
     {
@@ -9,7 +9,7 @@ public static class StringExtensions
             return string.Empty;
         }
 
-        if(str.Length < maxLength)
+        if (str.Length < maxLength)
         {
             return str;
         }

@@ -19,7 +19,13 @@ public partial class ProcessOptionsViewModel : ObservableValidator
     private string threshold_Type = ThresholdTypes.Otsu.ToString();
 
     [ObservableProperty]
+    private string surftRecognizer_NormType = NormTypes.L2.ToString();
+
+    [ObservableProperty]
     public string[] threshold_Types;
+
+    [ObservableProperty]
+    public string[] norm_Types;
 
     [ObservableProperty]
     private double canny_Treshold1 = 200;
@@ -41,7 +47,7 @@ public partial class ProcessOptionsViewModel : ObservableValidator
     private bool useCannyOptions = true;
 
     [ObservableProperty]
-    private bool useThresholdOptions = true;
+    private bool useThresholdOptions = false;
 
     [ObservableProperty]
     private bool useConvertColorsOptions = true;
@@ -66,8 +72,6 @@ public partial class ProcessOptionsViewModel : ObservableValidator
     public ProcessOptionsViewModel(MainWindowViewModel parentVm)
     {
         this.parentVm = parentVm;
-        this.PropertyChanged += MainWindowViewModel_PropertyChanged;
-
         Directory
             .GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "icons"))
             .Select(file => new FileInfo(file))
@@ -79,10 +83,14 @@ public partial class ProcessOptionsViewModel : ObservableValidator
         SelectedIconFile = iconFiles.FirstOrDefault();
 
         Threshold_Types = Enum.GetNames<ThresholdTypes>().ToArray();
+        Norm_Types = Enum.GetNames<NormTypes>().ToArray();
+
+        this.PropertyChanged += MainWindowViewModel_PropertyChanged;
     }
 
     private async void MainWindowViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        var property = e.PropertyName;
         await parentVm.RotateAgnosticCheckCommand.ExecuteAsync(null);
     }
 }

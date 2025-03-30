@@ -26,6 +26,9 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string resultImagePath = string.Empty;
 
+    [ObservableProperty]
+    private string errorMessageText = string.Empty;
+
     public bool CanProcessImage => !string.IsNullOrEmpty(SourceImagePath) && File.Exists(SourceImagePath);
 
     public MainWindowViewModel(OpenCvSharpProcessor recProcessor)
@@ -81,16 +84,34 @@ public partial class MainWindowViewModel : ObservableObject
         recProcessor.Canny_Treshold1 = options.Canny_Treshold1;
         recProcessor.Threshold_Thresh = options.Threshold_Thresh;
         recProcessor.Threshold_MaxVal = options.Threshold_MaxVal;
-        recProcessor.Threshold_Type = Enum.Parse<ThresholdTypes>(options.Threshold_Type.ToString());
+        recProcessor.Threshold_Type = Enum.Parse<ThresholdTypes>(options.Threshold_Type);
         recProcessor.Canny_AppertureSize = options.Canny_AppertureSize;
         recProcessor.UseCannyOptions = options.UseCannyOptions;
-        recProcessor.UseConvertToGrayOptions = recProcessor.UseConvertToGrayOptions;
-        recProcessor.UseThresholdOptions = recProcessor.UseThresholdOptions;
-        recProcessor.SurftRecognizer_HessianThreshold = recProcessor.SurftRecognizer_HessianThreshold;
+        recProcessor.UseConvertToGrayOptions = options.UseConvertColorsOptions;
+        recProcessor.UseThresholdOptions = options.UseThresholdOptions;
+        recProcessor.SurftRecognizer_HessianThreshold = options.SurftRecognizer_HessianThreshold;
+        recProcessor.SurftRecognizer_NormType = Enum.Parse<NormTypes>(options.SurftRecognizer_NormType);
 
-        string resultFile = await recProcessor.RotateAgnosticCheck(SourceImagePath, ProcessOptionsViewModel?.SelectedIconFile?.FullName, maxPoints: 1);
+        try
+        {
+            var result = await recProcessor.RotateAgnosticCheck(SourceImagePath, ProcessOptionsViewModel?.SelectedIconFile?.FullName, maxPoints: 1);
 
-        this.ResultImagePath = resultFile;
+            if (!result.HasErrors)
+            {
+                ResultImagePath = result.UpdatedScreenshotPath;
+                ErrorMessageText = "";
+            }
+            else
+            {
+                ErrorMessageText = result.ErrorMessage;
+                ResultImagePath = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessageText = ex.Message;
+            ResultImagePath = "";
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanProcessImage))]

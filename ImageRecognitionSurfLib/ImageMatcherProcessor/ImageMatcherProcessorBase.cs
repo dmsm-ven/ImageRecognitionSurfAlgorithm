@@ -1,6 +1,6 @@
 ﻿using OpenCvSharp;
 
-namespace ImageRecognitionSurfLib;
+namespace ImageRecognitionSurfLib.ImageMatcherProcessor;
 
 public abstract class ImageMatcherProcessorBase
 {
@@ -32,6 +32,6 @@ public abstract class ImageMatcherProcessorBase
 
     private bool IsSqDiffSelected()
     {
-        return (matchMode == TemplateMatchModes.SqDiff || matchMode == TemplateMatchModes.SqDiffNormed);
+        return matchMode == TemplateMatchModes.SqDiff || matchMode == TemplateMatchModes.SqDiffNormed;
     }
 }

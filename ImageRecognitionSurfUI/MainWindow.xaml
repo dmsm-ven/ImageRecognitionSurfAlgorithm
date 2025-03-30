@@ -10,11 +10,12 @@
     xmlns:vm="clr-namespace:ImageRecognitionSurfUI.ViewModels"
     Title="{Binding Title}"
     Width="800"
-    Height="285"
+    Height="400"
     d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel,
                                      IsDesignTimeCreatable=False}"
-    d:Height="400"
+    d:Height="500"
     d:Width="600"
+    Style="{StaticResource MaterialDesignWindow}"
     mc:Ignorable="d">
     <Window.Resources>
         <Style x:Key="GroupTitleTextBlockStyle" TargetType="TextBlock">
@@ -62,79 +63,113 @@
 
             <Expander
                 Grid.Row="1"
+                ExpandDirection="Right"
                 DataContext="{Binding ProcessOptionsViewModel}"
                 Header="Опции"
                 IsExpanded="True">
                 <StackPanel Orientation="Vertical">
-                    <TextBlock Margin="2" Text="Test icon file" />
-                    <ComboBox
-                        Margin="2"
-                        DisplayMemberPath="Name"
-                        IsTextSearchCaseSensitive="False"
-                        IsTextSearchEnabled="True"
-                        ItemsSource="{Binding IconFiles}"
-                        SelectedValue="{Binding SelectedIconFile, UpdateSourceTrigger=PropertyChanged}" />
+                    <DockPanel LastChildFill="True">
 
-                    <GroupBox Header="Общие настройки" Padding="4" Margin="2">
-                        <UniformGrid Columns="2">
-                            <TextBlock Margin="2" Text="Convert to gray options" />
-                            <CheckBox IsChecked="{Binding UseConvertColorsOptions}"  />
-
-                            <TextBlock Margin="2" Text="SURF HessianThreshold" />
-                            <TextBox Text="{Binding SurftRecognizer_HessianThreshold}"  />
-                        </UniformGrid>
-                    </GroupBox>
-                    
-                    <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
-                        <CheckBox IsChecked="{Binding UseCannyOptions}" VerticalAlignment="Center"  />
-                        <TextBlock Style="{StaticResource GroupTitleTextBlockStyle}" Text="Canny options" />
-                    </StackPanel>
-
-
-                    <UniformGrid Columns="2">
-                        <TextBlock Margin="2" Text="Canny Threshold1" />
-                        <TextBox Margin="2" Text="{Binding Canny_Treshold1, UpdateSourceTrigger=LostFocus}" />
-
-                        <TextBlock Margin="2" Text="Canny Threshold2" />
-                        <TextBox Margin="2" Text="{Binding Canny_Treshold2, UpdateSourceTrigger=LostFocus}" />
-
-                        <TextBlock Margin="2" Text="Canny Apperture Size" />
-                        <TextBox Margin="2" Text="{Binding Canny_AppertureSize, UpdateSourceTrigger=LostFocus}" />
-
-                        <TextBlock Margin="2" Text="Canny L2 Gradient" />
-                        <CheckBox Margin="2" IsChecked="{Binding Canny_L2Gradient, UpdateSourceTrigger=PropertyChanged}" />
-                    </UniformGrid>
-                    <UniformGrid Columns="2" />
-                    <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
-                        <CheckBox IsChecked="{Binding UseThresholdOptions}" VerticalAlignment="Center"  />
-                        <TextBlock Style="{StaticResource GroupTitleTextBlockStyle}" Text="Threshold options" />
-                    </StackPanel>
-                    <UniformGrid Columns="2">
-                        <TextBlock Margin="2" Text="Threshold Thresh" />
-                        <TextBox Margin="2" Text="{Binding Threshold_Thresh, UpdateSourceTrigger=LostFocus}" />
-
-                        <TextBlock Margin="2" Text="Threshold MaxVal" />
-                        <TextBox Margin="2" Text="{Binding Threshold_MaxVal, UpdateSourceTrigger=LostFocus}" />
-
-                        <TextBlock Margin="2" Text="Threshold Type" />
+                        <TextBlock Margin="2" Text="Test icon file" />
                         <ComboBox
                             Margin="2"
-                            ItemsSource="{Binding Threshold_Types, Mode=OneWay}"
-                            SelectedValue="{Binding Threshold_Type, UpdateSourceTrigger=PropertyChanged}" />
+                            DisplayMemberPath="Name"
+                            IsTextSearchCaseSensitive="False"
+                            IsTextSearchEnabled="True"
+                            ItemsSource="{Binding IconFiles}"
+                            SelectedValue="{Binding SelectedIconFile, UpdateSourceTrigger=PropertyChanged}" />
+                    </DockPanel>
 
-                    </UniformGrid>
+
+                    <GroupBox
+                        Margin="2"
+                        Padding="4"
+                        Header="Общие настройки">
+                        <UniformGrid Columns="2">
+                            <TextBlock Margin="4,2" Text="Convert to gray options" />
+                            <CheckBox IsChecked="{Binding UseConvertColorsOptions}" />
+
+                            <TextBlock Margin="4,2" Text="SURF HessianThreshold" />
+                            <TextBox Text="{Binding SurftRecognizer_HessianThreshold}" />
+
+                            <TextBlock Margin="4,2" Text="SURF NormType" />
+                            <ComboBox
+                                Margin="0,2"
+                                ItemsSource="{Binding Norm_Types, Mode=OneWay}"
+                                SelectedValue="{Binding SurftRecognizer_NormType, UpdateSourceTrigger=PropertyChanged}" />
+                        </UniformGrid>
+                    </GroupBox>
+
+                    <GroupBox Header="Canny Options">
+                        <StackPanel>
+                            <CheckBox
+                                VerticalAlignment="Center"
+                                Content="Включено"
+                                IsChecked="{Binding UseCannyOptions}" />
+                            <Separator />
+                            <UniformGrid Columns="2" IsEnabled="{Binding UseCannyOptions}">
+                                <TextBlock Margin="2" Text="Canny Threshold1" />
+                                <TextBox Margin="2" Text="{Binding Canny_Treshold1, UpdateSourceTrigger=LostFocus}" />
+
+                                <TextBlock Margin="2" Text="Canny Threshold2" />
+                                <TextBox Margin="2" Text="{Binding Canny_Treshold2, UpdateSourceTrigger=LostFocus}" />
+
+                                <TextBlock Margin="2" Text="Canny Apperture Size" />
+                                <TextBox Margin="2" Text="{Binding Canny_AppertureSize, UpdateSourceTrigger=LostFocus}" />
+
+                                <TextBlock Margin="2" Text="Canny L2 Gradient" />
+                                <CheckBox Margin="2" IsChecked="{Binding Canny_L2Gradient, UpdateSourceTrigger=PropertyChanged}" />
+                            </UniformGrid>
+                        </StackPanel>
+
+                    </GroupBox>
+
+                    <GroupBox Header="Threshold Options">
+                        <StackPanel>
+                            <CheckBox
+                                VerticalAlignment="Center"
+                                Content="Включено"
+                                IsChecked="{Binding UseThresholdOptions}" />
+                            <Separator />
+                            <UniformGrid Columns="2" IsEnabled="{Binding UseThresholdOptions}">
+                                <TextBlock Margin="2" Text="Threshold Thresh" />
+                                <TextBox Margin="2" Text="{Binding Threshold_Thresh, UpdateSourceTrigger=LostFocus}" />
+
+                                <TextBlock Margin="2" Text="Threshold MaxVal" />
+                                <TextBox Margin="2" Text="{Binding Threshold_MaxVal, UpdateSourceTrigger=LostFocus}" />
+
+                                <TextBlock Margin="2" Text="Threshold Type" />
+                                <ComboBox
+                                    Margin="2"
+                                    ItemsSource="{Binding Threshold_Types, Mode=OneWay}"
+                                    SelectedValue="{Binding Threshold_Type, UpdateSourceTrigger=PropertyChanged}" />
+
+                            </UniformGrid>
+                        </StackPanel>
+
+                    </GroupBox>
+
                 </StackPanel>
             </Expander>
         </Grid>
 
-        <Button
+        <StackPanel
             Grid.Row="0"
             Grid.Column="2"
-            Margin="2"
-            Padding="4"
-            VerticalAlignment="Top"
-            Command="{Binding RotateAgnosticCheckCommand}"
-            Content="Перерисовать" />
+            Orientation="Vertical">
+            <Button
+                Margin="2"
+                Padding="4"
+                VerticalAlignment="Top"
+                Command="{Binding RotateAgnosticCheckCommand}"
+                Content="Перерисовать" />
+            <TextBlock
+                FontSize="12"
+                Foreground="Red"
+                Text="{Binding ErrorMessageText}"
+                Visibility="{Binding ErrorMessageText, Converter={StaticResource StringNotEmptyVisibilityConverter}}" />
+        </StackPanel>
+
         <controls:ImageSourceControl
             Grid.Row="1"
             Grid.Column="0"
@@ -148,8 +183,6 @@
             VerticalAlignment="Stretch"
             Background="DarkGray"
             ShowsPreview="False" />
-
-
         <controls:ImageSourceControl
             Grid.Row="1"
             Grid.Column="2"

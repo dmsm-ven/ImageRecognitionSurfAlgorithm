@@ -1,6 +1,6 @@
 ﻿using OpenCvSharp;
 
-namespace ImageRecognitionSurfLib;
+namespace ImageRecognitionSurfLib.Helpers;
 
 public static class OpenCvSharpProcessorHelpers
 {
@@ -24,12 +24,12 @@ public static class OpenCvSharpProcessorHelpers
 
             if (drawNumber)
             {
-                var numberLocation = new Point(item.Position.X + (item.Size.Width / 2) - 15, item.Position.Y + 10 + (item.Size.Height / 2));
+                var numberLocation = new Point(item.Position.X + item.Size.Width / 2 - 15, item.Position.Y + 10 + item.Size.Height / 2);
                 Cv2.PutText(canvas, i.ToString(), numberLocation, HersheyFonts.HersheyDuplex, 1.25, Scalar.Black, 2, LineTypes.AntiAlias);
             }
             if (drawList)
             {
-                var labelLocation = new Point(titleStartPoint.X, titleStartPoint.Y + (i * titleRowOffset));
+                var labelLocation = new Point(titleStartPoint.X, titleStartPoint.Y + i * titleRowOffset);
                 Cv2.PutText(canvas, $"{i}. {text}", labelLocation, HersheyFonts.HersheyPlain, 0.9, Scalar.Fuchsia);
             }
             i++;
