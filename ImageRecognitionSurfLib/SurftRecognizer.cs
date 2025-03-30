@@ -9,6 +9,7 @@ internal static class SurftRecognizer
 {
     public static int HessianThreshold { get; set; } = 100;
     public static NormTypes NormType { get; set; } = NormTypes.L2;
+    public static double DistanceMinThreshold { get; set; } = 0.35;
 
     private static JsonSerializerOptions options = new() { WriteIndented = false };
 
@@ -53,7 +54,6 @@ internal static class SurftRecognizer
         KeyPoint[] keypoints1, keypoints2;
         Mat descriptors1 = new(), descriptors2 = new();
 
-
         surf.DetectAndCompute(mainImage, null, out keypoints1, descriptors1);
         surf.DetectAndCompute(subImage, null, out keypoints2, descriptors2);
 
@@ -70,7 +70,7 @@ internal static class SurftRecognizer
 
         if (srcPoints.Length == 0 || dstPoints.Length == 0)
         {
-            return mainImage;
+            throw new Exception("srcPoints or dstPoints length was null");
         }
 
         Mat homography = Cv2.FindHomography(InputArray.Create(srcPoints), InputArray.Create(dstPoints), HomographyMethods.Ransac);
@@ -79,7 +79,7 @@ internal static class SurftRecognizer
         float maxDistance = matches.Max(mt => mt.Distance);
         goodMatches = goodMatches
             .OrderBy(m => m.Distance) // Sort by distance
-            .Where(m => m.Distance < 0.35)
+            .Where(m => m.Distance < DistanceMinThreshold)
             .Take(maxPoints)
             .ToList();
 

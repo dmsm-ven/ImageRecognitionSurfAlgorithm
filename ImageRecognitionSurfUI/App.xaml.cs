@@ -18,6 +18,7 @@ public partial class App : Application
         AppHost = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
+                services.AddSingleton<ISettingsStorage, JsonFileSettingsStorage>();
                 services.AddSingleton<OpenCvSharpProcessor>();
                 services.AddSingleton<MainWindowViewModel>();
             })

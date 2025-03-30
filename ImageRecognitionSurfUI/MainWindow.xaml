@@ -7,13 +7,14 @@
     xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
     xmlns:local="clr-namespace:ImageRecognitionSurfUI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:mt="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:vm="clr-namespace:ImageRecognitionSurfUI.ViewModels"
     Title="{Binding Title}"
     Width="800"
     Height="400"
     d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel,
                                      IsDesignTimeCreatable=False}"
-    d:Height="500"
+    d:Height="1000"
     d:Width="600"
     Style="{StaticResource MaterialDesignWindow}"
     mc:Ignorable="d">
@@ -32,9 +33,9 @@
     </i:Interaction.Triggers>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="2*" />
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -63,14 +64,23 @@
 
             <Expander
                 Grid.Row="1"
-                ExpandDirection="Right"
                 DataContext="{Binding ProcessOptionsViewModel}"
-                Header="Опции"
+                ExpandDirection="Right"
                 IsExpanded="True">
+                <Expander.Header>
+                    <mt:PackIcon
+                        Width="32"
+                        Height="32"
+                        Foreground="Navy"
+                        Kind="Cog" />
+                </Expander.Header>
                 <StackPanel Orientation="Vertical">
                     <DockPanel LastChildFill="True">
 
-                        <TextBlock Margin="2" Text="Test icon file" />
+                        <TextBlock
+                            Margin="4,2"
+                            VerticalAlignment="Center"
+                            Text="Test icon file" />
                         <ComboBox
                             Margin="2"
                             DisplayMemberPath="Name"
@@ -82,15 +92,24 @@
 
 
                     <GroupBox
-                        Margin="2"
                         Padding="4"
                         Header="Общие настройки">
                         <UniformGrid Columns="2">
-                            <TextBlock Margin="4,2" Text="Convert to gray options" />
-                            <CheckBox IsChecked="{Binding UseConvertColorsOptions}" />
+                            <TextBlock Margin="4,2" Text="Imread Mode" />
+                            <ComboBox
+                                Margin="0,2"
+                                ItemsSource="{Binding Imread_Modes, Mode=OneWay}"
+                                SelectedValue="{Binding Imread_Mode, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Margin="4,2" Text="SURF min Distance" />
+                            <mt:DecimalUpDown
+                                Maximum="1"
+                                Minimum="0.05"
+                                ValueStep="0.05"
+                                Value="{Binding SurftRecognizer_DistanceMinThreshold}" />
 
                             <TextBlock Margin="4,2" Text="SURF HessianThreshold" />
-                            <TextBox Text="{Binding SurftRecognizer_HessianThreshold}" />
+                            <mt:NumericUpDown ValueStep="100" Value="{Binding SurftRecognizer_HessianThreshold}" />
 
                             <TextBlock Margin="4,2" Text="SURF NormType" />
                             <ComboBox
@@ -100,7 +119,25 @@
                         </UniformGrid>
                     </GroupBox>
 
-                    <GroupBox Header="Canny Options">
+                    <GroupBox Header="1. Blur Options">
+                        <StackPanel>
+                            <CheckBox
+                                VerticalAlignment="Center"
+                                Content="Включено"
+                                IsChecked="{Binding UseBlurOptions}" />
+                            <Separator />
+                            <UniformGrid Columns="2" IsEnabled="{Binding UseBlurOptions}">
+                                <TextBlock Margin="2" Text="Blur size" />
+                                <mt:DecimalUpDown
+                                    Margin="2"
+                                    Minimum="0"
+                                    ValueStep="0.5"
+                                    Value="{Binding BlurSize, UpdateSourceTrigger=PropertyChanged}" />
+                            </UniformGrid>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox Header="2. Canny Options">
                         <StackPanel>
                             <CheckBox
                                 VerticalAlignment="Center"
@@ -109,13 +146,17 @@
                             <Separator />
                             <UniformGrid Columns="2" IsEnabled="{Binding UseCannyOptions}">
                                 <TextBlock Margin="2" Text="Canny Threshold1" />
-                                <TextBox Margin="2" Text="{Binding Canny_Treshold1, UpdateSourceTrigger=LostFocus}" />
+                                <mt:NumericUpDown Minimum="0" Margin="2" Value="{Binding Canny_Treshold1, UpdateSourceTrigger=PropertyChanged}" />
 
                                 <TextBlock Margin="2" Text="Canny Threshold2" />
-                                <TextBox Margin="2" Text="{Binding Canny_Treshold2, UpdateSourceTrigger=LostFocus}" />
+                                <mt:NumericUpDown Minimum="0" Margin="2" Value="{Binding Canny_Treshold2, UpdateSourceTrigger=PropertyChanged}" />
 
                                 <TextBlock Margin="2" Text="Canny Apperture Size" />
-                                <TextBox Margin="2" Text="{Binding Canny_AppertureSize, UpdateSourceTrigger=LostFocus}" />
+                                <mt:NumericUpDown
+                                    Margin="2"
+                                    Maximum="7"
+                                    Minimum="3"
+                                    Value="{Binding Canny_AppertureSize, UpdateSourceTrigger=LostFocus}" />
 
                                 <TextBlock Margin="2" Text="Canny L2 Gradient" />
                                 <CheckBox Margin="2" IsChecked="{Binding Canny_L2Gradient, UpdateSourceTrigger=PropertyChanged}" />
@@ -124,7 +165,7 @@
 
                     </GroupBox>
 
-                    <GroupBox Header="Threshold Options">
+                    <GroupBox Header="3. Threshold Options">
                         <StackPanel>
                             <CheckBox
                                 VerticalAlignment="Center"
@@ -149,26 +190,42 @@
 
                     </GroupBox>
 
+
+
                 </StackPanel>
+
             </Expander>
         </Grid>
 
-        <StackPanel
+        <Grid
             Grid.Row="0"
-            Grid.Column="2"
-            Orientation="Vertical">
+            Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
             <Button
                 Margin="2"
                 Padding="4"
-                VerticalAlignment="Top"
-                Command="{Binding RotateAgnosticCheckCommand}"
-                Content="Перерисовать" />
-            <TextBlock
+                Grid.Column="0"
+                Command="{Binding FindAllCommand}"
+                Content="Перерисовать все" />
+            <Button
+                Margin="2"
+                Padding="4"
+                Grid.Column="1"
+                Command="{Binding FindSingleCommand}"
+                Content="Перерисовать одну" />
+            <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
                 FontSize="12"
                 Foreground="Red"
                 Text="{Binding ErrorMessageText}"
                 Visibility="{Binding ErrorMessageText, Converter={StaticResource StringNotEmptyVisibilityConverter}}" />
-        </StackPanel>
+        </Grid>
 
         <controls:ImageSourceControl
             Grid.Row="1"

@@ -10,6 +10,7 @@ namespace ImageRecognitionSurfUI.ViewModels;
 public partial class MainWindowViewModel : ObservableObject
 {
     private readonly OpenCvSharpProcessor recProcessor;
+    private readonly ISettingsStorage settingsStorage;
 
     private string? storedOriginalSourcePath = null;
 
@@ -31,15 +32,16 @@ public partial class MainWindowViewModel : ObservableObject
 
     public bool CanProcessImage => !string.IsNullOrEmpty(SourceImagePath) && File.Exists(SourceImagePath);
 
-    public MainWindowViewModel(OpenCvSharpProcessor recProcessor)
+    public MainWindowViewModel(OpenCvSharpProcessor recProcessor, ISettingsStorage settingsStorage)
     {
         this.recProcessor = recProcessor;
+        this.settingsStorage = settingsStorage;
     }
 
     [RelayCommand]
     private async Task Loaded()
     {
-        ProcessOptionsViewModel = new ProcessOptionsViewModel(this);
+        ProcessOptionsViewModel = new ProcessOptionsViewModel(this, settingsStorage);
 
         //Оригиналы скриншотов
         string screenshotsFolder = Path.Combine(Directory.GetCurrentDirectory(), "screenshots");
@@ -70,31 +72,70 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task RotateAgnosticCheck()
+    private void ApplySelectedOptions()
     {
         var options = ProcessOptionsViewModel;
-        if (options is null || !File.Exists(ProcessOptionsViewModel?.SelectedIconFile?.FullName))
+
+        recProcessor.UseCannyOptions = options.UseCannyOptions;
+        recProcessor.Canny_L2Gradient = options.Canny_L2Gradient;
+        recProcessor.Canny_Treshold2 = options.Canny_Treshold2;
+        recProcessor.Canny_Treshold1 = options.Canny_Treshold1;
+        recProcessor.Canny_AppertureSize = options.Canny_AppertureSize;
+        recProcessor.UseThresholdOptions = options.UseThresholdOptions;
+        recProcessor.Threshold_Thresh = options.Threshold_Thresh;
+        recProcessor.Threshold_MaxVal = options.Threshold_MaxVal;
+        recProcessor.Threshold_Type = Enum.Parse<ThresholdTypes>(options.Threshold_Type);
+        recProcessor.UseBlurOptions = options.UseBlurOptions;
+        recProcessor.BlurSize = options.BlurSize;
+        recProcessor.ImreadMode = Enum.Parse<ImreadModes>(options.Imread_Mode);
+        recProcessor.SurftRecognizer_DistanceMinThreshold = options.SurftRecognizer_DistanceMinThreshold;
+        recProcessor.SurftRecognizer_HessianThreshold = options.SurftRecognizer_HessianThreshold;
+        recProcessor.SurftRecognizer_NormType = Enum.Parse<NormTypes>(options.SurftRecognizer_NormType);
+    }
+
+    [RelayCommand]
+    private async Task FindSingle()
+    {
+        var options = ProcessOptionsViewModel;
+
+        if (options is null || !File.Exists(options?.SelectedIconFile?.FullName))
         {
             return;
         }
 
-        recProcessor.Canny_L2Gradient = options.Canny_L2Gradient;
-        recProcessor.Canny_Treshold2 = options.Canny_Treshold2;
-        recProcessor.Canny_Treshold1 = options.Canny_Treshold1;
-        recProcessor.Threshold_Thresh = options.Threshold_Thresh;
-        recProcessor.Threshold_MaxVal = options.Threshold_MaxVal;
-        recProcessor.Threshold_Type = Enum.Parse<ThresholdTypes>(options.Threshold_Type);
-        recProcessor.Canny_AppertureSize = options.Canny_AppertureSize;
-        recProcessor.UseCannyOptions = options.UseCannyOptions;
-        recProcessor.UseConvertToGrayOptions = options.UseConvertColorsOptions;
-        recProcessor.UseThresholdOptions = options.UseThresholdOptions;
-        recProcessor.SurftRecognizer_HessianThreshold = options.SurftRecognizer_HessianThreshold;
-        recProcessor.SurftRecognizer_NormType = Enum.Parse<NormTypes>(options.SurftRecognizer_NormType);
+        ApplySelectedOptions();
 
         try
         {
-            var result = await recProcessor.RotateAgnosticCheck(SourceImagePath, ProcessOptionsViewModel?.SelectedIconFile?.FullName, maxPoints: 1);
+            var result = await recProcessor.RotateAgnosticCheck(SourceImagePath, options?.SelectedIconFile?.FullName, maxPoints: 1);
+
+            if (!result.HasErrors)
+            {
+                ResultImagePath = result.UpdatedScreenshotPath;
+                ErrorMessageText = "";
+            }
+            else
+            {
+                ErrorMessageText = result.ErrorMessage;
+                ResultImagePath = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessageText = ex.Message;
+            ResultImagePath = "";
+        }
+    }
+
+    [RelayCommand]
+    private async Task FindAll()
+    {
+        ApplySelectedOptions();
+
+        try
+        {
+            var icons = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "icons"), "*.png", SearchOption.TopDirectoryOnly);
+            var result = await recProcessor.RecognizeDataToFile(SourceImagePath, icons, maxItems: 48);
 
             if (!result.HasErrors)
             {
