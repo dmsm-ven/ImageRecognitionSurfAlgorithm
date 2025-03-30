@@ -16,6 +16,14 @@
     d:Height="400"
     d:Width="600"
     mc:Ignorable="d">
+    <Window.Resources>
+        <Style x:Key="GroupTitleTextBlockStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Margin" Value="4,4,4,8" />
+            <Setter Property="Foreground" Value="Navy" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+    </Window.Resources>
     <i:Interaction.Triggers>
         <i:EventTrigger EventName="Loaded">
             <i:InvokeCommandAction Command="{Binding LoadedCommand}" />
@@ -26,6 +34,7 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -36,26 +45,20 @@
             Grid.Row="0"
             Grid.Column="0"
             Margin="2"
+            Padding="4"
+            VerticalAlignment="Top"
             Command="{Binding LoadSourceImageCommand}"
             Content="Загрузить изображение" />
+
         <Grid
             Grid.Row="0"
-            Grid.Column="2"
+            Grid.RowSpan="2"
+            Grid.Column="3"
             Margin="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <UniformGrid Columns="2">
-                <Button
-                    Grid.Row="0"
-                    Command="{Binding ProcessImageCommand}"
-                    Content="Обработать изображение" />
-                <Button
-                    Grid.Row="0"
-                    Command="{Binding RotateAgnosticCheckCommand}"
-                    Content="Тест без зависимости к наклону" />
-            </UniformGrid>
 
             <Expander
                 Grid.Row="1"
@@ -63,57 +66,75 @@
                 Header="Опции"
                 IsExpanded="True">
                 <StackPanel Orientation="Vertical">
-                    <!--
-                    <UniformGrid Columns="2">
-                        <TextBlock Margin="2" Text="ContourApproximationModes" />
-                        <ComboBox
-                            Margin="2"
-                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableContourApproximationModes}"
-                            SelectedValue="{Binding SelectedContourApproximationMode, UpdateSourceTrigger=PropertyChanged}" />
-                    </UniformGrid>
-                    <UniformGrid Columns="2">
-                        <TextBlock Margin="2" Text="RetrievalMode" />
-                        <ComboBox
-                            Margin="2"
-                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableRetrievalModes}"
-                            SelectedValue="{Binding SelectedRetrievalMode, UpdateSourceTrigger=PropertyChanged}" />
-                    </UniformGrid>
+                    <TextBlock Margin="2" Text="Test icon file" />
+                    <ComboBox
+                        Margin="2"
+                        DisplayMemberPath="Name"
+                        IsTextSearchCaseSensitive="False"
+                        IsTextSearchEnabled="True"
+                        ItemsSource="{Binding IconFiles}"
+                        SelectedValue="{Binding SelectedIconFile, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <GroupBox Header="Общие настройки" Padding="4" Margin="2">
+                        <UniformGrid Columns="2">
+                            <TextBlock Margin="2" Text="Convert to gray options" />
+                            <CheckBox IsChecked="{Binding UseConvertColorsOptions}"  />
+
+                            <TextBlock Margin="2" Text="SURF HessianThreshold" />
+                            <TextBox Text="{Binding SurftRecognizer_HessianThreshold}"  />
+                        </UniformGrid>
+                    </GroupBox>
+                    
+                    <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                        <CheckBox IsChecked="{Binding UseCannyOptions}" VerticalAlignment="Center"  />
+                        <TextBlock Style="{StaticResource GroupTitleTextBlockStyle}" Text="Canny options" />
+                    </StackPanel>
+
 
                     <UniformGrid Columns="2">
-                        <TextBlock Margin="2" Text="TemplateMatchMode" />
-                        <ComboBox
-                            Margin="2"
-                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableTemplateMatchModes}"
-                            SelectedValue="{Binding SelectedTemplateMatchMode, UpdateSourceTrigger=PropertyChanged}" />
-                    </UniformGrid>
+                        <TextBlock Margin="2" Text="Canny Threshold1" />
+                        <TextBox Margin="2" Text="{Binding Canny_Treshold1, UpdateSourceTrigger=LostFocus}" />
 
-                    <UniformGrid Columns="2">
-                        <TextBlock Margin="2" Text="ImreadMode" />
-                        <ComboBox
-                            Margin="2"
-                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableImreadModes}"
-                            SelectedValue="{Binding SelectedImreadMode, UpdateSourceTrigger=PropertyChanged}" />
-                    </UniformGrid>
+                        <TextBlock Margin="2" Text="Canny Threshold2" />
+                        <TextBox Margin="2" Text="{Binding Canny_Treshold2, UpdateSourceTrigger=LostFocus}" />
 
+                        <TextBlock Margin="2" Text="Canny Apperture Size" />
+                        <TextBox Margin="2" Text="{Binding Canny_AppertureSize, UpdateSourceTrigger=LostFocus}" />
+
+                        <TextBlock Margin="2" Text="Canny L2 Gradient" />
+                        <CheckBox Margin="2" IsChecked="{Binding Canny_L2Gradient, UpdateSourceTrigger=PropertyChanged}" />
+                    </UniformGrid>
+                    <UniformGrid Columns="2" />
+                    <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                        <CheckBox IsChecked="{Binding UseThresholdOptions}" VerticalAlignment="Center"  />
+                        <TextBlock Style="{StaticResource GroupTitleTextBlockStyle}" Text="Threshold options" />
+                    </StackPanel>
                     <UniformGrid Columns="2">
-                        <TextBlock Margin="2" Text="MatType" />
+                        <TextBlock Margin="2" Text="Threshold Thresh" />
+                        <TextBox Margin="2" Text="{Binding Threshold_Thresh, UpdateSourceTrigger=LostFocus}" />
+
+                        <TextBlock Margin="2" Text="Threshold MaxVal" />
+                        <TextBox Margin="2" Text="{Binding Threshold_MaxVal, UpdateSourceTrigger=LostFocus}" />
+
+                        <TextBlock Margin="2" Text="Threshold Type" />
                         <ComboBox
                             Margin="2"
-                            ItemsSource="{x:Static vm:ProcessOptionsViewModel.GetAvailableMatTypes}"
-                            SelectedValue="{Binding SelectedMatType, UpdateSourceTrigger=PropertyChanged}" />
-                    </UniformGrid> -->
-                    <UniformGrid Columns="2">
-                        <TextBlock Margin="2" Text="Test icon file" />
-                        <ComboBox
-                            Margin="2"
-                            ItemsSource="{Binding IconFiles}"
-                            DisplayMemberPath="Name"
-                            SelectedValue="{Binding SelectedIconFile, UpdateSourceTrigger=PropertyChanged}" />
+                            ItemsSource="{Binding Threshold_Types, Mode=OneWay}"
+                            SelectedValue="{Binding Threshold_Type, UpdateSourceTrigger=PropertyChanged}" />
+
                     </UniformGrid>
                 </StackPanel>
             </Expander>
         </Grid>
 
+        <Button
+            Grid.Row="0"
+            Grid.Column="2"
+            Margin="2"
+            Padding="4"
+            VerticalAlignment="Top"
+            Command="{Binding RotateAgnosticCheckCommand}"
+            Content="Перерисовать" />
         <controls:ImageSourceControl
             Grid.Row="1"
             Grid.Column="0"
@@ -127,37 +148,13 @@
             VerticalAlignment="Stretch"
             Background="DarkGray"
             ShowsPreview="False" />
+
+
         <controls:ImageSourceControl
             Grid.Row="1"
             Grid.Column="2"
             CurrentImagePath="{Binding ResultImagePath}" />
 
-        <!--
-        <Border
-            Grid.Row="2"
-            Grid.Column="0"
-            Margin="2"
-            Padding="1"
-            BorderBrush="Gray"
-            BorderThickness="1">
-            <Image
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Source="{Binding SourceImagePath}"
-                Stretch="UniformToFill" />
-        </Border>
-        <Border
-            Grid.Row="2"
-            Grid.Column="1"
-            Margin="2"
-            Padding="1"
-            BorderBrush="Gray"
-            BorderThickness="1">
-            <Image
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Source="{Binding ResultImagePath}"
-                Stretch="UniformToFill" />
-        </Border>-->
+
     </Grid>
 </Window>

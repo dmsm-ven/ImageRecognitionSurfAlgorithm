@@ -9,12 +9,28 @@ namespace ImageRecognitionSurfLib;
 
 public class OpenCvSharpProcessor
 {
-    public ImreadModes? PREDEFINED_ImreadMode { get; set; } = ImreadModes.Color;
+    public ImreadModes? PREDEFINED_ImreadMode { get; set; } = ImreadModes.Grayscale;
     public MatType PREDEFINED_MatType { get; set; } = MatType.CV_8U;
     public Rect DeskSpellsPanelBounds = new(new Point(670, 140), new Size(590, 700));
 
+
+    public bool UseConvertToGrayOptions { get; set; } = true;
+    public bool UseThresholdOptions { get; set; } = true;
+    public double Threshold_Thresh { get; set; } = 0.8;
+    public double Threshold_MaxVal { get; set; } = 256;
+    public ThresholdTypes Threshold_Type { get; set; } = ThresholdTypes.Otsu;
+
+    public bool UseCannyOptions { get; set; } = true;
+    public double Canny_Treshold1 { get; set; } = 200;
+    public double Canny_Treshold2 { get; set; } = 256;
+    public int Canny_AppertureSize { get; set; } = 3;
+    public bool Canny_L2Gradient { get; set; } = true;
+
+    public int SurftRecognizer_HessianThreshold { get; set; } = 100;
+
     public async Task<ScreenshotRecognizeResult> RecognizeDataToFile(string filePath, IEnumerable<string> iconFiles, int maxItems)
     {
+        SurftRecognizer.HessianThreshold = SurftRecognizer_HessianThreshold;
         string ext = DateTime.Now.Ticks + Path.GetExtension(filePath);
 
         string outputFileResult = Path.Combine(Directory.GetCurrentDirectory(), "cache",
@@ -34,17 +50,37 @@ public class OpenCvSharpProcessor
         };
     }
 
-    public async Task<string> RotateAgnosticCheck(string screenshotPath, string iconPath)
+    private Mat BuildMat(string fileName, bool isMain)
     {
-        ImreadModes mode = ImreadModes.Color;
-        var screenshotMat = new Mat(screenshotPath, mode);
-        screenshotMat = new Mat(screenshotMat, DeskSpellsPanelBounds);
-        var iconMat = new Mat(iconPath, mode);
+        var mat = new Mat(fileName, PREDEFINED_ImreadMode.Value);
+        if (UseConvertToGrayOptions)
+        {
+            mat.CvtColor(ColorConversionCodes.GRAY2BGR);
+        }
+        if (UseThresholdOptions)
+        {
+            mat = mat.Threshold(Threshold_Thresh, Threshold_MaxVal, Threshold_Type);
+        }
+        if (UseCannyOptions)
+        {
+            mat = mat.Canny(Canny_Treshold1, Canny_Treshold2, Canny_AppertureSize, Canny_L2Gradient);
+        }
+        if (isMain)
+        {
+            mat = new Mat(mat, DeskSpellsPanelBounds);
+        }
+        return mat;
+    }
+
+    public async Task<string> RotateAgnosticCheck(string screenshotPath, string iconPath, int maxPoints)
+    {
+        var screenshotMat = BuildMat(screenshotPath, isMain: true);
+        var iconMat = BuildMat(iconPath, isMain: false);
 
         string name = Path.Combine(Path.GetFileNameWithoutExtension(screenshotPath) + $"_result_{DateTime.Now.Ticks}" + Path.GetExtension(screenshotPath));
         string outputPath = Path.Combine(Directory.GetCurrentDirectory(), "cache", name);
 
-        var resultImage = await SurftRecognizer.DetectAndMatchFeaturesUsingSURF(screenshotMat, iconMat, Path.GetFileNameWithoutExtension(iconPath));
+        var resultImage = await SurftRecognizer.DetectAndMatchFeaturesUsingSURF(screenshotMat, iconMat, Path.GetFileNameWithoutExtension(iconPath), maxPoints);
 
         resultImage.SaveImage(outputPath);
 
@@ -53,6 +89,11 @@ public class OpenCvSharpProcessor
 
     private async Task Recognize(string filePath, string outputFile, IEnumerable<string> iconFiles, int maxItems)
     {
+        if (string.IsNullOrWhiteSpace(filePath) || string.IsNullOrWhiteSpace(outputFile) || iconFiles.Count() == 0 || maxItems == 0)
+        {
+            return;
+        }
+
         try
         {
             var icons = await GetPredefinedItems(iconFiles);
@@ -75,14 +116,14 @@ public class OpenCvSharpProcessor
 
     private async Task<List<AbilityKnownLocation>> ExtractAllPositionsAsync(Mat scrMat, IEnumerable<AbilityMatWrapper> icons, int maxItems)
     {
-        //var matcher = new BFMatcherImageImatcherProcessor(keypointsDictionary, PREDEFINED_TemplateMatchMode.Value);
-        var matcher = new SURFImageMtcherProcessor();
+        var matcher = new SURFImageMatcherProcessor();
 
         ConcurrentBag<AbilityKnownLocation> bag = new();
 
         var tasks = icons.Select(async (template) =>
         {
-            var knownLocation = await matcher.GetKnownLocation(scrMat, template.MatValue, template.ImageName);
+            Mat srcClone = scrMat.Clone();
+            var knownLocation = await matcher.GetKnownLocation(srcClone, template.MatValue, template.ImageName);
 
             if (knownLocation != null)
             {
@@ -93,12 +134,14 @@ public class OpenCvSharpProcessor
                 await SurftRecognizer.WriteLogLine(template.ImageName + " was null");
             }
 
+            srcClone.Dispose();
             template.MatValue?.Dispose();
         });
 
         await Task.WhenAll(tasks.ToArray());
 
         var sortedByWeight = bag.OrderBy(i => i.Weight).Take(maxItems).ToList();
+        await SurftRecognizer.WriteLogLine(JsonSerializer.Serialize(sortedByWeight));
 
         return sortedByWeight;
     }
@@ -125,6 +168,7 @@ public class OpenCvSharpProcessor
 
 internal static class SurftRecognizer
 {
+    public static int HessianThreshold { get; set; } = 100;
     private static JsonSerializerOptions options = new() { WriteIndented = false };
 
     private static string logFile = "log.txt";
@@ -159,10 +203,10 @@ internal static class SurftRecognizer
         Cv2.WaitKey();
     }
 
-    public static async Task<Mat> DetectAndMatchFeaturesUsingSURF(Mat mainImage, Mat subImage, string iconName)
+    public static async Task<Mat> DetectAndMatchFeaturesUsingSURF(Mat mainImage, Mat subImage, string iconName, int maxPoints)
     {
         // Step 1: Create SURF detector
-        var surf = SURF.Create(hessianThreshold: 100);
+        var surf = SURF.Create(HessianThreshold);
 
         // Step 2: Detect keypoints and compute descriptors
         KeyPoint[] keypoints1, keypoints2;
@@ -182,14 +226,19 @@ internal static class SurftRecognizer
         var srcPoints = goodMatches.Select(m => keypoints2[m.TrainIdx].Pt).ToArray();
         var dstPoints = goodMatches.Select(m => keypoints1[m.QueryIdx].Pt).ToArray();
 
+        if (srcPoints.Length == 0 || dstPoints.Length == 0)
+        {
+            return mainImage;
+        }
+
         Mat homography = Cv2.FindHomography(InputArray.Create(srcPoints), InputArray.Create(dstPoints), HomographyMethods.Ransac);
 
         //Фильтруем по дистанции
         float maxDistance = matches.Max(mt => mt.Distance);
         goodMatches = goodMatches
             .OrderBy(m => m.Distance) // Sort by distance
-            .Where(m => m.Distance < 0.35 * maxDistance)
-            .Take(3)
+            .Where(m => m.Distance < 0.35)
+            .Take(maxPoints)
             .ToList();
 
         // Step 5: Visualize matches (Optional)

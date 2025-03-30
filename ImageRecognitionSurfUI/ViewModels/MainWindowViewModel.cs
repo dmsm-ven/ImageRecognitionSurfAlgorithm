@@ -1,22 +1,14 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Humanizer;
 using ImageRecognitionSurfLib;
 using Microsoft.Win32;
-using System.Diagnostics;
+using OpenCvSharp;
 using System.IO;
-using System.Windows.Threading;
 
 namespace ImageRecognitionSurfUI.ViewModels;
 
 public partial class MainWindowViewModel : ObservableObject
 {
-    private const int MEMORY_BUFFER_MAX_ITEMS = 30;
-
-    private readonly LinkedList<long> memoryUsageBuffer;
-
-    private readonly DispatcherTimer memoryUsageDisplayTimer;
-
     private readonly OpenCvSharpProcessor recProcessor;
 
     private string? storedOriginalSourcePath = null;
@@ -39,20 +31,6 @@ public partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel(OpenCvSharpProcessor recProcessor)
     {
         this.recProcessor = recProcessor;
-        memoryUsageDisplayTimer = new DispatcherTimer(TimeSpan.FromSeconds(2), DispatcherPriority.Send, (e, v) =>
-        {
-            long memoryUsageCurrent = Process.GetCurrentProcess().WorkingSet64;
-            if (memoryUsageBuffer.Count == MEMORY_BUFFER_MAX_ITEMS)
-            {
-                memoryUsageBuffer.RemoveFirst();
-            }
-            long memoryUsageAvgPerMinute = memoryUsageBuffer.Sum() / (memoryUsageBuffer.Count > 0 ? memoryUsageBuffer.Count : 1);
-
-            this.memoryUsageBuffer.AddLast(memoryUsageCurrent);
-            Title = $"Использование памяти: {memoryUsageCurrent.Bytes().Humanize()} | В среднем за последнюю минуту: {memoryUsageAvgPerMinute.Bytes().Humanize()}";
-        }, App.Current.Dispatcher);
-
-        memoryUsageBuffer = new LinkedList<long>();
     }
 
     [RelayCommand]
@@ -72,9 +50,6 @@ public partial class MainWindowViewModel : ObservableObject
             this.SourceImagePath = resourceFiles.First();
             storedOriginalSourcePath = this.SourceImagePath;
         }
-
-        memoryUsageDisplayTimer.Start();
-
     }
 
     [RelayCommand]
@@ -95,8 +70,26 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task RotateAgnosticCheck()
     {
-        string testIcon = ProcessOptionsViewModel.SelectedIconFile.FullName;
-        string resultFile = await recProcessor.RotateAgnosticCheck(SourceImagePath, testIcon);
+        var options = ProcessOptionsViewModel;
+        if (options is null || !File.Exists(ProcessOptionsViewModel?.SelectedIconFile?.FullName))
+        {
+            return;
+        }
+
+        recProcessor.Canny_L2Gradient = options.Canny_L2Gradient;
+        recProcessor.Canny_Treshold2 = options.Canny_Treshold2;
+        recProcessor.Canny_Treshold1 = options.Canny_Treshold1;
+        recProcessor.Threshold_Thresh = options.Threshold_Thresh;
+        recProcessor.Threshold_MaxVal = options.Threshold_MaxVal;
+        recProcessor.Threshold_Type = Enum.Parse<ThresholdTypes>(options.Threshold_Type.ToString());
+        recProcessor.Canny_AppertureSize = options.Canny_AppertureSize;
+        recProcessor.UseCannyOptions = options.UseCannyOptions;
+        recProcessor.UseConvertToGrayOptions = recProcessor.UseConvertToGrayOptions;
+        recProcessor.UseThresholdOptions = recProcessor.UseThresholdOptions;
+        recProcessor.SurftRecognizer_HessianThreshold = recProcessor.SurftRecognizer_HessianThreshold;
+
+        string resultFile = await recProcessor.RotateAgnosticCheck(SourceImagePath, ProcessOptionsViewModel?.SelectedIconFile?.FullName, maxPoints: 1);
+
         this.ResultImagePath = resultFile;
     }
 
