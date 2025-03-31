@@ -3,15 +3,14 @@ using ImageRecognitionSurfLib.ImageMatcherProcessor;
 using ImageRecognitionSurfLib.Models;
 using OpenCvSharp;
 using System.Collections.Concurrent;
+using System.Data;
 
 namespace ImageRecognitionSurfLib;
 
-public class OpenCvSharpProcessor
+public partial class OpenCvSharpProcessor
 {
-    public static readonly Size ICON_SIZE = new(55, 55);
     //public ImreadModes? PREDEFINED_ImreadMode { get; set; } = ImreadModes.Grayscale;
     public MatType PREDEFINED_MatType { get; set; } = MatType.CV_8UC1;
-    public Rect DeskSpellsPanelBounds = new(new Point(670, 140), new Size(590, 700));
     public ImreadModes ImreadMode { get; set; } = ImreadModes.Unchanged;
     public bool UseThresholdOptions { get; set; } = true;
     public double Threshold_Thresh { get; set; } = 0.8;
@@ -24,26 +23,62 @@ public class OpenCvSharpProcessor
     public bool Canny_L2Gradient { get; set; } = true;
     public bool UseBlurOptions { get; set; } = false;
     public double BlurSize { get; set; } = 3;
-
     public int SurftRecognizer_HessianThreshold
     {
         get => SurftRecognizer.HessianThreshold;
         set => SurftRecognizer.HessianThreshold = value;
     }
-
     public double SurftRecognizer_DistanceMinThreshold
     {
         get => SurftRecognizer.DistanceMinThreshold;
         set => SurftRecognizer.DistanceMinThreshold = value;
     }
-
     public NormTypes SurftRecognizer_NormType
     {
         get => SurftRecognizer.NormType;
         set => SurftRecognizer.NormType = value;
     }
 
-    public async Task<List<string>> RecognizeAbilityNames(string filePath, IEnumerable<string> iconFiles, int maxItems)
+    private MatModelBuilder matModelBuilder;
+
+    public OpenCvSharpProcessor()
+    {
+        matModelBuilder = new MatModelBuilder(this);
+    }
+
+    public async Task<ScreenshotRecognizeResult> RecognizeSingleAbility(string screenshotPath, string iconPath, AbilityPanel panel)
+    {
+        return await RecognizeSingleAbilityBase(screenshotPath, iconPath, panel);
+    }
+
+    private async Task<ScreenshotRecognizeResult> RecognizeSingleAbilityBase(string screenshotPath, string iconPath, AbilityPanel panel)
+    {
+        var screenshotMat = matModelBuilder.BuildMat(File.ReadAllBytes(screenshotPath), panel);
+        var iconMat = matModelBuilder.BuildMat(File.ReadAllBytes(iconPath), panel: null);
+
+        string name = Path.Combine(Path.GetFileNameWithoutExtension(screenshotPath) + $"_result_{DateTime.Now.Ticks}" + Path.GetExtension(screenshotPath));
+        string outputPath = Path.Combine(Directory.GetCurrentDirectory(), "cache", name);
+
+        try
+        {
+            var resultImage = await SurftRecognizer.DetectAndMatchFeaturesUsingSURF(screenshotMat, iconMat, Path.GetFileNameWithoutExtension(iconPath), 1);
+            resultImage.SaveImage(outputPath);
+            return new ScreenshotRecognizeResult()
+            {
+                UpdatedScreenshotPath = outputPath
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ScreenshotRecognizeResult()
+            {
+                HasErrors = true,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+
+    public async Task<List<string>> RecognizeAbilityNames(string filePath, IEnumerable<string> iconFiles, AbilityPanel panel)
     {
         ConcurrentDictionary<string, byte[]> bag = new();
         var iconFilesDataTasks = iconFiles.Select(async (i) => await Task.Run(async () =>
@@ -54,17 +89,14 @@ public class OpenCvSharpProcessor
 
         await Task.WhenAll(iconFilesDataTasks);
 
-        return await RecognizeAbilityNamesBase(filePath, bag.OrderBy(kvp => kvp.Value).ToDictionary(), maxItems);
+        return await RecognizeAbilityNamesBase(filePath, bag.OrderBy(kvp => kvp.Value).ToDictionary(), panel);
     }
 
-    public Task<List<string>> RecognizeAbilityNames(string filePath, IDictionary<string, byte[]> iconFilesData, int maxItems)
+    private async Task<List<string>> RecognizeAbilityNamesBase(string filePath,
+        IDictionary<string, byte[]> iconFilesData,
+        AbilityPanel panel)
     {
-        return RecognizeAbilityNamesBase(filePath, iconFilesData, maxItems);
-    }
-
-    private async Task<List<string>> RecognizeAbilityNamesBase(string filePath, IDictionary<string, byte[]> iconFilesData, int maxItems)
-    {
-        if (string.IsNullOrWhiteSpace(filePath) || maxItems == 0)
+        if (string.IsNullOrWhiteSpace(filePath))
         {
             return Enumerable.Empty<string>().ToList();
         }
@@ -83,11 +115,11 @@ public class OpenCvSharpProcessor
         try
         {
 
-            var icons = await GetPredefinedItems(iconFilesData)
+            var icons = await matModelBuilder.GetPredefinedItems(iconFilesData);
 
-            var screenshotMat = BuildMat(File.ReadAllBytes(filePath), isMain: true);
+            var screenshotMat = matModelBuilder.BuildMat(File.ReadAllBytes(filePath), panel);
 
-            var pointsInfo = await ExtractAllPositionsAsync(screenshotMat, icons, maxItems);
+            var pointsInfo = await ExtractAllPositionsAsync(screenshotMat, icons, panel);
 
             List<string> abilitiesInCanvas = pointsInfo.Select(i => i.Title).ToList();
 
@@ -100,9 +132,9 @@ public class OpenCvSharpProcessor
         return Enumerable.Empty<string>().ToList();
     }
 
-    public async Task<ScreenshotRecognizeResult> RecognizeDataToFile(string filePath, IEnumerable<string> iconFiles, int maxItems)
+    public async Task<ScreenshotRecognizeResult> RecognizeDataToFile(string filePath, IEnumerable<string> iconFiles, AbilityPanel panel)
     {
-        if (string.IsNullOrWhiteSpace(filePath) || iconFiles.Count() == 0 || maxItems == 0)
+        if (string.IsNullOrWhiteSpace(filePath) || iconFiles.Count() == 0)
         {
             return new ScreenshotRecognizeResult()
             {
@@ -124,11 +156,15 @@ public class OpenCvSharpProcessor
 
         try
         {
-            var icons = await GetPredefinedItems(iconFiles);
+            var icons = await matModelBuilder.GetPredefinedItems(iconFiles);
 
-            var screenshotMat = BuildMat(filePath, isMain: true);
+            var screenshotMat = matModelBuilder.BuildMat(File.ReadAllBytes(filePath), panel);
 
-            var pointsInfo = await ExtractAllPositionsAsync(screenshotMat, icons, maxItems);
+            var pointsInfo = await ExtractAllPositionsAsync(screenshotMat, icons, panel);
+
+            screenshotMat.DrawSearchResultBorders(pointsInfo, drawTotal: false, drawNumber: true, drawList: false);
+
+            screenshotMat.SaveImage(outputFileResult);
 
             return new ScreenshotRecognizeResult()
             {
@@ -145,88 +181,7 @@ public class OpenCvSharpProcessor
         }
     }
 
-    public async Task<ScreenshotRecognizeResult> RotateAgnosticCheck(string screenshotPath, string iconPath, int maxPoints)
-    {
-        var screenshotMat = BuildMat(screenshotPath, isMain: true);
-        var iconMat = BuildMat(iconPath, isMain: false);
-
-        string name = Path.Combine(Path.GetFileNameWithoutExtension(screenshotPath) + $"_result_{DateTime.Now.Ticks}" + Path.GetExtension(screenshotPath));
-        string outputPath = Path.Combine(Directory.GetCurrentDirectory(), "cache", name);
-
-        try
-        {
-            var resultImage = await SurftRecognizer.DetectAndMatchFeaturesUsingSURF(screenshotMat, iconMat, Path.GetFileNameWithoutExtension(iconPath), maxPoints);
-            resultImage.SaveImage(outputPath);
-            return new ScreenshotRecognizeResult()
-            {
-                UpdatedScreenshotPath = outputPath
-            };
-        }
-        catch (Exception ex)
-        {
-            return new ScreenshotRecognizeResult()
-            {
-                HasErrors = true,
-                ErrorMessage = ex.Message
-            };
-        }
-
-    }
-
-    private Mat? BuildMat(byte[] data, bool isMain)
-    {
-        var mat = Cv2.ImDecode(data, ImreadMode);
-
-        if (!isMain)
-        {
-            mat = mat.Resize(ICON_SIZE);
-        }
-
-        if (UseBlurOptions)
-        {
-            mat = mat.Blur(new Size(BlurSize, BlurSize));
-        }
-
-        if (UseCannyOptions)
-        {
-            mat.ConvertTo(mat, PREDEFINED_MatType);
-            mat = mat.Canny(Canny_Treshold1, Canny_Treshold2, Canny_AppertureSize, Canny_L2Gradient);
-        }
-
-        if (UseThresholdOptions)
-        {
-            mat.ConvertTo(mat, PREDEFINED_MatType);
-            mat = mat.Threshold(Threshold_Thresh, Threshold_MaxVal, Threshold_Type);
-        }
-
-        if (isMain)
-        {
-            mat = new Mat(mat, DeskSpellsPanelBounds);
-        }
-        return mat;
-    }
-
-    private async Task Recognize(string filePath, string outputFile, IEnumerable<string> iconFiles, int maxItems)
-    {
-        try
-        {
-            var icons = await GetPredefinedItems(iconFiles);
-
-            var screenshotMat = BuildMat(File.ReadAllBytes(filePath), isMain: true);
-
-            var pointsInfo = await ExtractAllPositionsAsync(screenshotMat, icons, maxItems);
-
-            screenshotMat.DrawSearchResultBorders(pointsInfo, drawTotal: false, drawNumber: true, drawList: false); // static helper метод
-
-            screenshotMat.SaveImage(outputFile);
-        }
-        catch
-        {
-            throw;
-        }
-    }
-
-    private async Task<List<AbilityKnownLocation>> ExtractAllPositionsAsync(Mat scrMat, IEnumerable<AbilityMatWrapper> icons, int maxItems)
+    private async Task<List<AbilityKnownLocation>> ExtractAllPositionsAsync(Mat scrMat, IEnumerable<AbilityMatWrapper> icons, AbilityPanel panel)
     {
         var matcher = new SURFImageMatcherProcessor();
 
@@ -252,26 +207,11 @@ public class OpenCvSharpProcessor
 
         await Task.WhenAll(tasks.ToArray());
 
-        var sortedByWeight = bag.OrderBy(i => i.Weight).Take(maxItems).ToList();
+        int takeCount = matModelBuilder.AbilityPanelToMaxItemsCount(panel);
+        var sortedByWeight = bag.OrderBy(i => i.Weight).Take(takeCount).ToList();
         //await SurftRecognizer.WriteLogLine(JsonSerializer.Serialize(sortedByWeight));
 
         return sortedByWeight;
     }
-
-    private async Task<AbilityMatWrapper[]> GetPredefinedItems(IDictionary<string, byte[]> iconFiles)
-    {
-        var list = new List<AbilityMatWrapper>();
-
-        foreach (var file in iconFiles)
-        {
-            Mat? mat = BuildMat(file.Value, isMain: false);
-
-            list.Add(new AbilityMatWrapper()
-            {
-                ImageName = Path.GetFileNameWithoutExtension(file.Key),
-                MatValue = mat
-            });
-        }
-        return list.ToArray();
-    }
 }
+

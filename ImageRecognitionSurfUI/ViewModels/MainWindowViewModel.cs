@@ -4,6 +4,7 @@ using ImageRecognitionSurfLib;
 using Microsoft.Win32;
 using OpenCvSharp;
 using System.IO;
+using static ImageRecognitionSurfLib.OpenCvSharpProcessor;
 
 namespace ImageRecognitionSurfUI.ViewModels;
 
@@ -20,7 +21,6 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private ProcessOptionsViewModel processOptionsViewModel;
 
-    [NotifyCanExecuteChangedFor(nameof(ProcessImageCommand))]
     [ObservableProperty]
     private string sourceImagePath = string.Empty;
 
@@ -107,7 +107,9 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            var result = await recProcessor.RotateAgnosticCheck(SourceImagePath, options?.SelectedIconFile?.FullName, maxPoints: 1);
+            var result = await recProcessor.RecognizeSingleAbility(SourceImagePath,
+                options?.SelectedIconFile?.FullName,
+                AbilityPanel.Ultimates);
 
             if (!result.HasErrors)
             {
@@ -135,7 +137,7 @@ public partial class MainWindowViewModel : ObservableObject
         try
         {
             var icons = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "icons"), "*.png", SearchOption.TopDirectoryOnly);
-            var result = await recProcessor.RecognizeDataToFile(SourceImagePath, icons, maxItems: 48);
+            var result = await recProcessor.RecognizeDataToFile(SourceImagePath, icons, AbilityPanel.Ultimates);
 
             if (!result.HasErrors)
             {
@@ -155,11 +157,4 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanProcessImage))]
-    private async Task ProcessImage()
-    {
-        var icons = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "icons"), "*.png", SearchOption.TopDirectoryOnly);
-        var resultFile = await recProcessor.RecognizeDataToFile(SourceImagePath, icons, 48);
-        this.ResultImagePath = resultFile.UpdatedScreenshotPath;
-    }
 }
